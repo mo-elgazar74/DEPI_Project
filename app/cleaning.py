@@ -15,7 +15,7 @@ import json, re, os, unicodedata
 from pathlib import Path
 
 # ========= CONFIG =========
-INPUT_JSONL   = "/home/mohamed/DEPI_Project/Data/Extracted_Books/Basic/maths/g5/t1/Maths_grade_5_first_term.jsonl"  # <-- غيّر ده لمسارك
+INPUT_JSONL   = r"D:\Data Science\DEPI\DEPI_Project\Data\Extracted_Books\Basic\maths\g2\t1\Math_AR_Prim2_TR1.jsonl"  # <-- غيّر ده لمسارك
 OUTPUT_SUFFIX = "_clean_chunked.jsonl"
 
 # فلاتر جودة الصفحة

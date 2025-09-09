@@ -9,11 +9,11 @@ from llama_index.core import Document
 from PyPDF2 import PdfReader
 
 # === CONFIG ===
-PDF_PATH = "/home/mohamed/DEPI_Project/Data/Books/maths/g5/t1/Maths_grade_5_first_term.pdf"
+PDF_PATH = r"D:\Data Science\DEPI\DEPI_Project\Data\Books\maths\g2\t1\Math_AR_Prim2_TR1.pdf"
 LANG = "ara"
 DPI = 300
 SUBJECT = "Maths"
-GRADE = "5"
+GRADE = "2"
 APPLY_PREPROCESS = False # Set True if you want OpenCV filters
 # =================
 
