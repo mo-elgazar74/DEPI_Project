@@ -1,0 +1,10 @@
+llama-index==0.10.28
+faiss-cpu
+sentence-transformers
+pandas
+tqdm
+numpy<2
+opencv-python
+pdf2image
+pytesseract
+pdfplumber
