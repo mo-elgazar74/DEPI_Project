@@ -1,10 +1,26 @@
+# Core RAG stack
 llama-index==0.10.28
 faiss-cpu
+
+# Embeddings / rerankers
 sentence-transformers
+transformers
+torch
+einops
+safetensors
+
+# Utilities
+python-dotenv
 pandas
 tqdm
 numpy<2
+
+# PDF / OCR pipeline
 opencv-python
 pdf2image
 pytesseract
 pdfplumber
+pillow
+
+# Groq (LLM provider)
+groq
