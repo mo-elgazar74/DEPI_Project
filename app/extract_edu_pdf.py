@@ -9,7 +9,7 @@ from llama_index.core import Document
 from PyPDF2 import PdfReader
 
 # === CONFIG ===
-PDF_PATH = "../Data/Books/Maths_grade_5_first_term.pdf"
+PDF_PATH = "/home/mohamed/DEPI_Project/Data/Books/maths/g5/t1/Maths_grade_5_first_term.pdf"
 LANG = "ara"
 DPI = 300
 SUBJECT = "Maths"

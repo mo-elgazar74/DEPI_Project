@@ -12,7 +12,7 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.vector_stores.faiss import FaissVectorStore
 import faiss
 
-INPUT_JSONL = "/home/mohamed/DEPI_Project/Data/Extracted_Books/Cleaned/Maths_grade_5_first_term_clean_chunked.jsonl"
+INPUT_JSONL = "/home/mohamed/DEPI_Project/Data/Extracted_Books/Cleaned/maths/g5/t1/Maths_grade_5_first_term_clean_chunked.jsonl"
 INDEX_DIR   = "/home/mohamed/DEPI_Project/Indexes/maths/g5/t1/index_math_g5_t1"
 
 def load_jsonl_chunks(path: str):
