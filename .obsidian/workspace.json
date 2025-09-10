@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "01.Dashboards/Tasks.md",
-                "mode": "preview",
-                "source": true
+                "file": "7.Teams/Edu_Bot Studio.md",
+                "mode": "source",
+                "source": false
               },
               "icon": "lucide-file",
-              "title": "Tasks"
+              "title": "Edu_Bot Studio"
             }
           }
         ],
@@ -109,7 +109,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "01.Dashboards/Tasks.md",
+                "file": "7.Teams/Edu_Bot Studio.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -119,7 +119,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Tasks"
+              "title": "Backlinks for Edu_Bot Studio"
             }
           },
           {
@@ -128,12 +128,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "01.Dashboards/Tasks.md",
+                "file": "7.Teams/Edu_Bot Studio.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from Tasks"
+              "title": "Outgoing links from Edu_Bot Studio"
             }
           },
           {
@@ -157,13 +157,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "01.Dashboards/Tasks.md",
+                "file": "7.Teams/Edu_Bot Studio.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Tasks"
+              "title": "Outline of Edu_Bot Studio"
             }
           },
           {
@@ -216,20 +216,22 @@
   },
   "active": "52e8aa0c4c608ebf",
   "lastOpenFiles": [
-    "Home.md",
+    "6.Docs/Capability Building.md",
+    "7.Teams/Edu_Bot Studio.md",
+    "05.Epics/Comptence Building.md",
     "01.Dashboards/Tasks.md",
+    "Home.md",
+    "home/mohamed/DEPI_Project/02.Projects/Edu_Bot.md",
     "08.Tasks/hi.md",
     "00.Company/Team.canvas",
     "README.md",
     "02.Projects/Edu_BotStudio.md",
-    "home/mohamed/DEPI_Project/02.Projects/Edu_Bot.md",
     "02.Projects/Edu_Bot Studio.md",
     "home/mohamed/DEPI_Project/02.Projects",
     "home/mohamed/DEPI_Project",
     "home/mohamed",
     "home",
     "Edu_Bot.md",
-    "7.Teams/Edu_Bot Studio.md",
     "meshkode_logo2.png.md",
     "99.Configuration/Images/chatbot1.webp",
     "99.Configuration/Images/a1ff7d29-af51-43a1-a88f-83d546bf41bc.webp",
@@ -244,9 +246,7 @@
     "6.Docs/DEPI_project_planning.png",
     "6.Docs/DEPI_project_planning.pdf",
     "6.Docs/DEPI_project_planning.excalidraw",
-    "6.Docs/Capability Building.md",
     "6.Docs",
-    "05.Epics/Comptence Building.md",
     "06.Epics/Comptence Building.md",
     "14.Teams/Edu_Bot.md",
     "MeshKodeStudio.md",
