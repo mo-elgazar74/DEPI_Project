@@ -4,24 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "181ab05d2cd41dd2",
+        "id": "ad9d7bb53225ef7a",
         "type": "tabs",
         "children": [
           {
-            "id": "d0f9c45cb74153fe",
+            "id": "2e6bd86847744e8f",
             "type": "leaf",
             "state": {
-              "type": "canvas",
-              "state": {
-                "file": "Untitled.canvas",
-                "viewState": {
-                  "x": 0,
-                  "y": 0,
-                  "zoom": 0
-                }
-              },
-              "icon": "lucide-layout-dashboard",
-              "title": "Untitled"
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
         ]
@@ -97,7 +90,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "README.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -107,7 +99,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for README"
+              "title": "Backlinks"
             }
           },
           {
@@ -116,12 +108,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "README.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from README"
+              "title": "Outgoing links"
             }
           },
           {
@@ -145,35 +136,77 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "README.md",
+                "file": "Untitled.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of README"
+              "title": "Outline of Untitled"
+            }
+          },
+          {
+            "id": "254e63a68116c95e",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "96c1c8d9e4267450",
+            "type": "leaf",
+            "state": {
+              "type": "git-view",
+              "state": {},
+              "icon": "git-pull-request",
+              "title": "Source Control"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "left-ribbon": {
     "hiddenItems": {
       "switcher:Open quick switcher": false,
+      "bases:Create new base": false,
       "graph:Open graph view": false,
       "canvas:Create new canvas": false,
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
-      "bases:Create new base": false
+      "markdown-importer:Open format converter": false,
+      "table-editor-obsidian:Advanced Tables Toolbar": false,
+      "vscode-editor:Create Code File": false,
+      "templater-obsidian:Templater": false,
+      "obsidian-git:Open Git source control": false
     }
   },
-  "active": "d0f9c45cb74153fe",
+  "active": "5647b892fa05e7f5",
   "lastOpenFiles": [
+    "Indexes/social_studies/g6/t2",
+    "Indexes/social_studies/g6/t1",
+    "Indexes/social_studies/g5/t2",
+    "Indexes/social_studies/g5/t1",
+    "Indexes/social_studies/g4/t2",
+    "Indexes/social_studies/g4/t1",
+    "Indexes/social_studies/g3/t2",
+    "Indexes/social_studies/g3/t1",
+    "Indexes/social_studies/g2/t2",
+    "Indexes/social_studies/g2/t1",
+    "Indexes/social_studies/g1/t2",
+    "Untitled.md",
+    "2025-09-10.md",
     "README.md",
     "Untitled.canvas"
   ]

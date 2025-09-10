@@ -1,0 +1,187 @@
+{
+  "devMode": false,
+  "ignoreCodeBlockRestrictions": false,
+  "preferredDateFormat": "YYYY-MM-DD",
+  "firstWeekday": {
+    "index": 1,
+    "name": "Monday",
+    "shortName": "Mo"
+  },
+  "syncInterval": 200,
+  "enableJs": false,
+  "viewFieldDisplayNullAsEmpty": false,
+  "enableSyntaxHighlighting": true,
+  "enableEditorRightClickMenu": true,
+  "inputFieldTemplates": [],
+  "buttonTemplates": [
+    {
+      "style": "primary",
+      "label": "🧱  New Project",
+      "tooltip": "Create a new project note with metadata and description",
+      "type": "command",
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:959a39a1-b2b7-49d2-a04d-b5a5158fd762"
+        }
+      ],
+      "id": "add_project_button"
+    },
+    {
+      "label": "🚦 Create New Standup",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "create_new_standup",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:a1d63637-fa07-4abd-9e5a-5aab4905ce6e"
+        }
+      ]
+    },
+    {
+      "label": "🧑‍💼 Create New Meeting",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "create_new_meeting",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:3984b5a2-db3f-44ef-88d1-ef7de4420c46"
+        }
+      ]
+    },
+    {
+      "label": "🔬 Create Study",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "create_study_button",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:eaf15c8c-c6d5-4edc-bc87-0fd5231ca249"
+        }
+      ]
+    },
+    {
+      "label": "📄 Create Document",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "create_document_button",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:2b98fb93-cc0f-4a03-9e55-b0aa1040a600"
+        }
+      ]
+    },
+    {
+      "label": "🧠 Create Knowledge",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "create_knowledge_button",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:9797e864-1be1-4b69-9457-0ace6113bac0"
+        }
+      ]
+    },
+    {
+      "label": "🏃 Create Sprint",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "create_sprint_button",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:a61c42ed-4d77-417d-a648-9b3192b7bf68"
+        }
+      ]
+    },
+    {
+      "label": "🧩 Create Epic",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "create_epic_button",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:df7a48ee-2ffd-42b8-8c90-6e448c849b08"
+        }
+      ]
+    },
+    {
+      "label": "⛰️ Create Milestone",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "create_milestone_button",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:c33a0a3e-534c-405a-97df-4c1c97bca28c"
+        }
+      ]
+    },
+    {
+      "label": "✅  New Task",
+      "icon": "",
+      "style": "primary",
+      "class": "",
+      "cssStyle": "",
+      "backgroundImage": "",
+      "tooltip": "",
+      "id": "add_task_button",
+      "hidden": false,
+      "actions": [
+        {
+          "type": "command",
+          "command": "quickadd:choice:d1634c92-dd05-4fb0-912c-af68727d36ca"
+        }
+      ]
+    }
+  ],
+  "excludedFolders": [
+    "templates"
+  ]
+}

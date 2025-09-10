@@ -1,0 +1,10 @@
+/* Headings inside Canvas cards */
+.canvas-node-container .markdown-rendered h1 { font-size: 40px; }
+.canvas-node-container .markdown-rendered h2 { font-size: 36px; }
+.canvas-node-container .markdown-rendered h3 { font-size: 32px; }
+.canvas-node-container .markdown-rendered h4 { font-size: 28px; }
+.canvas-node-container .markdown-rendered h5 { font-size: 24px; }
+.canvas-node-container .markdown-rendered h6 { font-size: 22px; }
+
+/* Paragraph text */
+.canvas-node-container p { font-size: 26px; }

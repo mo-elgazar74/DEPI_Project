@@ -1,1 +1,10 @@
-{}
+{
+  "vimMode": false,
+  "propertiesInDocument": "hidden",
+  "useMarkdownLinks": false,
+  "attachmentFolderPath": "./attachements",
+  "readableLineLength": false,
+  "showLineNumber": false,
+  "promptDelete": false,
+  "alwaysUpdateLinks": true
+}

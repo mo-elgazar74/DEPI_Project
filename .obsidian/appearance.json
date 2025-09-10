@@ -1,1 +1,13 @@
-{}
+{
+  "cssTheme": "Minimal",
+  "theme": "obsidian",
+  "accentColor": "#54998b",
+  "enabledCssSnippets": [
+    "MCL Multi Column",
+    "kanban",
+    "canvas_font_size",
+    "epic"
+  ],
+  "baseFontSizeAction": false,
+  "nativeMenus": false
+}

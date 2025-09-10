@@ -1,0 +1,16 @@
+.epic-kpis { display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:.75rem }
+.kpi { background: var(--background-secondary); padding:.75rem; border-radius:.5rem; border:1px solid var(--background-modifier-border) }
+.kpi-title { font-size:.75rem; opacity:.7 }
+.kpi-main { font-size:1.4rem; font-weight:600 }
+.kpi-sub { font-size:.8rem; opacity:.8 }
+.epic-progress .bar { height:8px; background: var(--background-modifier-border); border-radius:999px; overflow:hidden; margin-top:.5rem }
+.epic-progress .fill { height:100%; background: var(--interactive-accent); }
+.epic-filters .filter-row { display:flex; flex-wrap:wrap; gap:.5rem; margin:.5rem 0 }
+.epic-filters label { font-size:.85rem }
+.badge { display:inline-block; padding:.1rem .4rem; border-radius:.4rem; font-size:.7rem; border:1px solid var(--background-modifier-border) }
+.badge.prio { background: var(--background-primary); }
+.badge.status { background: var(--tag-background); }
+.badge.tag { background: var(--tag-background); }
+.badge.warn { background: #a56; color:#fff }
+.badge.bad { background: #c33; color:#fff }
+table.dataview th, table.dataview td { vertical-align: top }
