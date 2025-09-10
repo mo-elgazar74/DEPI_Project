@@ -4,20 +4,39 @@
     "type": "split",
     "children": [
       {
-        "id": "ad9d7bb53225ef7a",
+        "id": "80540e2657a6314d",
         "type": "tabs",
         "children": [
           {
-            "id": "2e6bd86847744e8f",
+            "id": "a09787adb8cbfc1d",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Home.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "Home"
+            }
+          },
+          {
+            "id": "52e8aa0c4c608ebf",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "01.Dashboards/Tasks.md",
+                "mode": "preview",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "Tasks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -90,6 +109,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "01.Dashboards/Tasks.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -99,7 +119,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Backlinks for Tasks"
             }
           },
           {
@@ -108,11 +128,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "01.Dashboards/Tasks.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links"
+              "title": "Outgoing links from Tasks"
             }
           },
           {
@@ -136,13 +157,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Untitled.md",
+                "file": "01.Dashboards/Tasks.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Untitled"
+              "title": "Outline of Tasks"
             }
           },
           {
@@ -170,11 +191,12 @@
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -192,22 +214,52 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "5647b892fa05e7f5",
+  "active": "52e8aa0c4c608ebf",
   "lastOpenFiles": [
-    "Indexes/social_studies/g6/t2",
-    "Indexes/social_studies/g6/t1",
-    "Indexes/social_studies/g5/t2",
-    "Indexes/social_studies/g5/t1",
-    "Indexes/social_studies/g4/t2",
-    "Indexes/social_studies/g4/t1",
-    "Indexes/social_studies/g3/t2",
-    "Indexes/social_studies/g3/t1",
-    "Indexes/social_studies/g2/t2",
-    "Indexes/social_studies/g2/t1",
-    "Indexes/social_studies/g1/t2",
-    "Untitled.md",
-    "2025-09-10.md",
+    "Home.md",
+    "01.Dashboards/Tasks.md",
+    "08.Tasks/hi.md",
+    "00.Company/Team.canvas",
     "README.md",
+    "02.Projects/Edu_BotStudio.md",
+    "home/mohamed/DEPI_Project/02.Projects/Edu_Bot.md",
+    "02.Projects/Edu_Bot Studio.md",
+    "home/mohamed/DEPI_Project/02.Projects",
+    "home/mohamed/DEPI_Project",
+    "home/mohamed",
+    "home",
+    "Edu_Bot.md",
+    "7.Teams/Edu_Bot Studio.md",
+    "meshkode_logo2.png.md",
+    "99.Configuration/Images/chatbot1.webp",
+    "99.Configuration/Images/a1ff7d29-af51-43a1-a88f-83d546bf41bc.webp",
+    "99.Configuration/Images/Chatbots.png",
+    "03.Meetings/2025-09-10_DailyStandup.md",
+    "03.Meetings/weekly meeting.md",
+    "08.Tasks",
+    "08.Tasks/test.md",
+    "04.Tasks",
+    "04.Tasks/extract.md",
+    "7.Teams",
+    "6.Docs/DEPI_project_planning.png",
+    "6.Docs/DEPI_project_planning.pdf",
+    "6.Docs/DEPI_project_planning.excalidraw",
+    "6.Docs/Capability Building.md",
+    "6.Docs",
+    "05.Epics/Comptence Building.md",
+    "06.Epics/Comptence Building.md",
+    "14.Teams/Edu_Bot.md",
+    "MeshKodeStudio.md",
+    "11.Docs/Capability Building.md",
+    "11.Docs/DEPI_project_planning.png",
+    "11.Docs/How to ignore .obsidian directory for Git collaboratos.md",
+    "08.Tasks/extract.md",
+    "99.Configuration/Templates/demo_template.md",
+    "99.Configuration/Templates/project_template.md",
+    "99.Configuration/Settings/visibility.md",
+    "99.Configuration/Images/meshkode_logo2.png",
+    "99.Configuration/Images/meshkode_logo.png",
+    "99.Configuration/Images/background.jpg",
     "Untitled.canvas"
   ]
 }
