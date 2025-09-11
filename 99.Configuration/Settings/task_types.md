@@ -1,0 +1,7 @@
+bug
+feature
+improvement
+admin
+management
+investigation
+learning
