@@ -15,9 +15,9 @@
               "state": {
                 "file": "00.Company/Team.canvas",
                 "viewState": {
-                  "x": 1035.1315513493603,
-                  "y": 450.8893604613431,
-                  "zoom": -0.6794544671800598
+                  "x": -2461.2860484428807,
+                  "y": 286.07760598205147,
+                  "zoom": -1.4859152360000218
                 }
               },
               "icon": "lucide-layout-dashboard",
@@ -174,8 +174,8 @@
             "state": {
               "type": "git-view",
               "state": {},
-              "icon": "git-pull-request",
-              "title": "Source Control"
+              "icon": "lucide-ghost",
+              "title": "git-view"
             }
           }
         ],
@@ -196,22 +196,22 @@
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
       "markdown-importer:Open format converter": false,
+      "templater-obsidian:Templater": false,
       "table-editor-obsidian:Advanced Tables Toolbar": false,
       "vscode-editor:Create Code File": false,
-      "templater-obsidian:Templater": false,
       "obsidian-git:Open Git source control": false
     }
   },
   "active": "52e8aa0c4c608ebf",
   "lastOpenFiles": [
     "01.Dashboards/Tasks.md",
-    "6.Docs/Capability Building.md",
+    "00.Company/Team.canvas",
     "02.Projects/Edu_BotStudio.md",
     "Home.md",
     "08.Tasks/hi.md",
     "7.Teams/Edu_Bot Studio.md",
+    "6.Docs/Capability Building.md",
     "05.Epics/Comptence Building.md",
-    "00.Company/Team.canvas",
     "home/mohamed/DEPI_Project/02.Projects/Edu_Bot.md",
     "README.md",
     "02.Projects/Edu_Bot Studio.md",

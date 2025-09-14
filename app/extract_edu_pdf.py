@@ -121,5 +121,5 @@ def process_pdf(PDF_PATH: Path):
     print(f"\n📦 Output saved to: {output_path}")
 
 if __name__ == "__main__":
-    for pdf in Path("/home/mohamed/DEPI_Project/Data/Books/english/g5/t2").rglob("*.pdf"):
+    for pdf in Path(r"D:\Data Science\DEPI\DEPI_Project\Data\Books").rglob("*.pdf"):
         process_pdf(pdf)
