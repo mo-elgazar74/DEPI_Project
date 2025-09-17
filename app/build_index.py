@@ -1,63 +1,119 @@
 # build_index.py
 import os
-os.environ["TRANSFORMERS_NO_TF"] = "1"
-os.environ["USE_TF"] = "0"
-
-from pathlib import Path
 import json
+import uuid
+from pathlib import Path
 from typing import List
-
-from llama_index.core import Document, VectorStoreIndex, StorageContext, Settings
+os.environ["TRANSFORMERS_NO_TF"] = "1"  
+os.environ["USE_TF"] = "0"              
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  
+from dotenv import load_dotenv
+from qdrant_client import QdrantClient
+from qdrant_client.models import PointStruct, Distance, VectorParams
+from llama_index.core import Document, Settings
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.vector_stores.faiss import FaissVectorStore
-import faiss
 
-INPUT_JSONL = "/home/mohamed/DEPI_Project/Data/Extracted_Books/Cleaned/maths/g5/t1/Maths_grade_5_first_term_clean_chunked.jsonl"
-INDEX_DIR   = "/home/mohamed/DEPI_Project/Indexes/maths/g5/t1/index_math_g5_t1"
+# ========= ENV & CLIENT =========
+load_dotenv("/home/mohamed/DEPI_Project/.env")
 
-def load_jsonl_chunks(path: str):
-    docs = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
-                continue
-            obj = json.loads(line)
-            text = (obj.get("text") or "").strip()
-            md   = obj.get("metadata", {}) or {}
-            if text:
-                docs.append(Document(text=text, metadata=md))
-    return docs
+URL_QDRANT = os.getenv("URL_QDRANT")
+API_KEY_QDRANT = os.getenv("API_KEY_QDRANT")
+if not URL_QDRANT or not API_KEY_QDRANT:
+    raise EnvironmentError("❌ Set URL_QDRANT and API_KEY_QDRANT in environment.")
 
-def main():
-    in_path = Path(INPUT_JSONL)
-    if not in_path.exists():
-        print("❌ Input file dosen't exist.", in_path); return
+QDRANT_CLIENT = QdrantClient(url=URL_QDRANT, api_key=API_KEY_QDRANT)
 
-    # 1) Embedding ( cosine Similarity)
-    embed = HuggingFaceEmbedding(model_name="intfloat/multilingual-e5-small", normalize=True)
-    Settings.embed_model = embed
+# ========= MODEL =========
+# intfloat/multilingual-e5-small -> 384-dim
+EMBED_MODEL = HuggingFaceEmbedding(model_name="intfloat/multilingual-e5-small", normalize=True)
+Settings.embed_model = EMBED_MODEL
 
-    # 2) Faiss Index
-    dim = len(embed.get_query_embedding("hello"))
-    faiss_index = faiss.IndexFlatIP(dim)  # IP مع normalize=True ≈ cosine
+# ========= CONFIG =========
+CLEANED_ROOT = "/home/mohamed/DEPI_Project/Data/Extracted_Books/Cleaned"
+VECTOR_DIM   = 384
 
-    # 3) Prepare VectorStore
-    vector_store = FaissVectorStore(faiss_index=faiss_index)
+def _safe_create_collection(collection_name: str, recreate: bool) -> None:
+    """
+    Creates or recreates a Qdrant collection with the given name.
+    If recreate is True, it will delete any existing collection with the same name.
+    """
+    if recreate:
+        QDRANT_CLIENT.recreate_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(size=VECTOR_DIM, distance=Distance.COSINE),
+        )
+        return
+    try:
+        QDRANT_CLIENT.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(size=VECTOR_DIM, distance=Distance.COSINE),
+        )
+    except Exception:
+        pass  # Collection already exists
 
-    # 4) StorageContext 
-    storage_ctx  = StorageContext.from_defaults(vector_store=vector_store)
 
-    print("📥 Building Chunks ...")
-    docs = load_jsonl_chunks(str(in_path))
-    print(f"✅ loading done for : {len(docs)} Chunks.")
+def insert_into_qdart(recreate: bool = False) -> None:
+    """
+    Goes into every JSONL file under CLEANED_ROOT:
+    - determines collection name: subject_grade_term
+    - creates/recreates the collection
+    - builds points with stable id (source-page-chunk_id)
+    - upserts all points into the collection
+    """
+    root = Path(CLEANED_ROOT)
+    files = list(root.rglob("*.jsonl"))
+    if not files:
+        print(f"❌ No JSONL files found under: {root}")
+        return
 
-    print("🏗️  Building Vector Store (FAISS) ...")
-    index = VectorStoreIndex.from_documents(docs, storage_context=storage_ctx, show_progress=True)
+    for jsonl_file in files:
+        # subject/grade/term from path: .../Cleaned/<subject>/<grade>/<term>/<file.jsonl>
+        try:
+            subject = jsonl_file.parts[-4]
+            grade   = jsonl_file.parts[-3]
+            term    = jsonl_file.parts[-2]
+        except Exception:
+            subject, grade, term = "general", "na", "na"
 
-    print("💾 Saving Vector Store (FAISS)...")
-    Path(INDEX_DIR).mkdir(parents=True, exist_ok=True)
-    index.storage_context.persist(persist_dir=INDEX_DIR)
-    print(f"✅ Saved in: {INDEX_DIR}")
+        collection_name = f"{subject}_{grade}_{term}"
+        _safe_create_collection(collection_name, recreate=recreate)
+
+        points: List[PointStruct] = []
+
+        with open(jsonl_file, "r", encoding="utf-8") as f:
+            for i, line in enumerate(f):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+
+                text = (obj.get("text") or "").strip()
+                md   = (obj.get("metadata") or {})
+                if not (text and md):
+                    continue
+                vector = EMBED_MODEL.get_text_embedding(text)
+                # Add text to payload for reference
+                md["text"] = text
+                # Stable ID based on source|page|chunk_id
+                raw_id = f"{md.get('source','src')}|{md.get('page', i)}|{md.get('chunk_id', i)}"
+                point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, raw_id))
+                points.append(PointStruct(id=point_id, vector=vector, payload=md))
+
+        if points:
+            QDRANT_CLIENT.upsert(collection_name=collection_name, points=points)
+            print(f"✅ Upsert {len(points)} point(s) → {collection_name}  (from {jsonl_file.name})")
+
+    # Clooections Names
+    print("\n📚 Collections:")
+    cols = QDRANT_CLIENT.get_collections()
+    for c in cols.collections:
+        print(" •", c.name)
+
 
 if __name__ == "__main__":
-    main()
+    # If collection exists, it will be recreated (all data lost)
+    insert_into_qdart(recreate=False)
+
