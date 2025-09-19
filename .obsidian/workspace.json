@@ -11,17 +11,14 @@
             "id": "52e8aa0c4c608ebf",
             "type": "leaf",
             "state": {
-              "type": "canvas",
+              "type": "markdown",
               "state": {
-                "file": "00.Company/Team.canvas",
-                "viewState": {
-                  "x": -2461.2860484428807,
-                  "y": 286.07760598205147,
-                  "zoom": -1.4859152360000218
-                }
+                "file": "Home.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-layout-dashboard",
-              "title": "Team"
+              "icon": "lucide-file",
+              "title": "Home"
             }
           }
         ]
@@ -204,10 +201,21 @@
   },
   "active": "52e8aa0c4c608ebf",
   "lastOpenFiles": [
-    "01.Dashboards/Tasks.md",
-    "00.Company/Team.canvas",
-    "02.Projects/Edu_BotStudio.md",
+    "08.Tasks/Extract.md",
+    "Data/Extracted_Books/social_studies/g6/t2",
+    "Data/Extracted_Books/social_studies/g6/t1",
+    "Data/Extracted_Books/social_studies/g5/t2",
+    "Data/Extracted_Books/social_studies/g5/t1",
+    "Data/Extracted_Books/social_studies/g4/t2",
+    "Data/Extracted_Books/social_studies/g4/t1",
+    "Data/Extracted_Books/social_studies/g3/t2",
+    "Data/Extracted_Books/social_studies/g3/t1",
+    "Data/Extracted_Books/social_studies/g2/t2",
+    "Data/Extracted_Books/social_studies/g2/t1",
     "Home.md",
+    "00.Company/Team.canvas",
+    "01.Dashboards/Tasks.md",
+    "02.Projects/Edu_BotStudio.md",
     "08.Tasks/hi.md",
     "7.Teams/Edu_Bot Studio.md",
     "6.Docs/Capability Building.md",
@@ -215,10 +223,6 @@
     "home/mohamed/DEPI_Project/02.Projects/Edu_Bot.md",
     "README.md",
     "02.Projects/Edu_Bot Studio.md",
-    "home/mohamed/DEPI_Project/02.Projects",
-    "home/mohamed/DEPI_Project",
-    "home/mohamed",
-    "home",
     "Edu_Bot.md",
     "meshkode_logo2.png.md",
     "99.Configuration/Images/chatbot1.webp",
@@ -226,15 +230,9 @@
     "99.Configuration/Images/Chatbots.png",
     "03.Meetings/2025-09-10_DailyStandup.md",
     "03.Meetings/weekly meeting.md",
-    "08.Tasks",
     "08.Tasks/test.md",
-    "04.Tasks",
     "04.Tasks/extract.md",
-    "7.Teams",
     "6.Docs/DEPI_project_planning.png",
-    "6.Docs/DEPI_project_planning.pdf",
-    "6.Docs/DEPI_project_planning.excalidraw",
-    "6.Docs",
     "06.Epics/Comptence Building.md",
     "14.Teams/Edu_Bot.md",
     "MeshKodeStudio.md",
