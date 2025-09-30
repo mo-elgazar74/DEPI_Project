@@ -97,7 +97,7 @@ def load_llm():
 # -------------------------------
 def get_matching_collections(client: QdrantClient, grade: int, term: int):
     """ Returen Collections That ends with *_g{grade}_t{term} """
-    suffix = f"_g{grade}_t{term}"
+    suffix = f"_g{grade}_t{term}"   
     cols = client.get_collections().collections
     return [c.name for c in cols if c.name.endswith(suffix)]
 
