@@ -21,7 +21,7 @@ load_dotenv(ENV_PATH)
 # ==========================================================
 # 🔹.Env Keys
 # ==========================================================
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-daf4e67e98b34f98b0f4f0e69063ea51")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_CHAT_MODEL = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat")
 
