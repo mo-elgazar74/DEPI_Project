@@ -1,15 +1,17 @@
-
+import base64
 import os
 import json
 from pathlib import Path
 import re
-from typing import TypedDict, List
+from typing import TypedDict, List, Optional
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from qdrant_client import QdrantClient
 from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # ==========================================================
 # 🔹 .ENV
@@ -29,8 +31,14 @@ QDRANT_URL = os.getenv("URL_QDRANT")
 QDRANT_API_KEY = os.getenv("API_KEY_QDRANT")
 HF_API_KEY = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_BASE = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1")
+OPENROUTER_VISION_MODEL = os.getenv("OPENROUTER_VISION_MODEL", "meta-llama/llama-3.2-90b-vision-instruct")
+OPENROUTER_REFERER = os.getenv("OPENROUTER_REFERER", "")
+OPENROUTER_TITLE = os.getenv("OPENROUTER_TITLE", "")
+
 # ==========================================================
-# 🔹 Qudrant Clients and Embeddings
+# 🔹 Clients and Embeddings
 # ==========================================================
 qdrant_client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
@@ -47,6 +55,18 @@ llm = ChatOpenAI(
     model=DEEPSEEK_CHAT_MODEL,
     temperature=0.2,
 )
+
+openrouter_client: Optional[OpenAI] = None
+openrouter_headers: dict[str, str] = {}
+if OPENROUTER_API_KEY:
+    try:
+        openrouter_client = OpenAI(base_url=OPENROUTER_BASE, api_key=OPENROUTER_API_KEY)
+        if OPENROUTER_REFERER:
+            openrouter_headers["HTTP-Referer"] = OPENROUTER_REFERER
+        if OPENROUTER_TITLE:
+            openrouter_headers["X-Title"] = OPENROUTER_TITLE
+    except Exception as exc:
+        print(f"⚠️ تعذر تهيئة عميل OpenRouter: {exc}")
 
 # ==========================================================
 # 🔹 Student Memory
@@ -76,6 +96,43 @@ def update_memory(old: str, question: str, answer: str) -> str:
     merged = (old.strip() + "\n" + text).strip()
     return merged[-2000:]
 
+
+def _format_image_data(image_base64: Optional[str]) -> Optional[str]:
+    if not image_base64:
+        return None
+    image_base64 = image_base64.strip()
+    if not image_base64:
+        return None
+    if image_base64.startswith("data:image"):
+        return image_base64
+    return f"data:image/png;base64,{image_base64}"
+
+
+def _invoke_vision_model(prompt: str, image_data_url: str, max_tokens: int = 600) -> Optional[str]:
+    if openrouter_client:
+        try:
+            response = openrouter_client.chat.completions.create(
+                model=OPENROUTER_VISION_MODEL,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": image_data_url}},
+                        ],
+                    }
+                ],
+                max_tokens=max_tokens,
+                extra_headers=openrouter_headers or None,
+            )
+            result = response.choices[0].message.content.strip()
+            if result:
+                return result
+        except Exception as exc:
+            print(f"⚠️ تعذر استخدام نموذج الرؤية عبر OpenRouter: {exc}")
+
+    return None
+
 # ==========================================================
 # 🔹 State Definition 
 # ==========================================================
@@ -93,6 +150,8 @@ class AgentState(TypedDict):
     attempts: int
     summary: str
     memory: str
+    image_base64: Optional[str]
+    image_description: str
 
 # ==========================================================
 # 🔹 LangGraph Nodes
@@ -105,17 +164,51 @@ def memory_node(state: AgentState) -> AgentState:
         "memory": memory_text,
         "search_query": state["question"],
         "retrieved_docs": [],
+        "image_description": state.get("image_description", ""),
+    }
+
+
+def vision_describe_node(state: AgentState) -> AgentState:
+    image_data_url = _format_image_data(state.get("image_base64"))
+    if not image_data_url or not openrouter_client:
+        return {}
+
+    print("0.5 🖼️ استخراج وصف من الصورة المرفقة...")
+    instructions = (
+        "أنت محلل يساعد في فهم الصور التعليمية.\n"
+        "أعطني وصفًا موجزًا باللغة العربية لما يظهر في الصورة، مع التركيز على الكلمات المفتاحية أو الرموز أو العناوين داخلها.\n"
+        "حدد المادة الدراسية المحتملة إن أمكن (مثال: رياضيات، علوم، لغة عربية، ...).\n"
+        "أعد النتيجة في سطرين أو ثلاثة كحد أقصى بدون أي تنسيق خاص."
+    )
+    response = _invoke_vision_model(instructions, image_data_url, max_tokens=200)
+    if not response:
+        print("⚠️ لم يتم الحصول على وصف للصورة. سيتم المتابعة بدون وصف.")
+        return {}
+
+    if not response:
+        return {}
+
+    print("   -> وصف مختصر للصورة:", response)
+    combined_query = state["question"].strip()
+    if response:
+        combined_query = (combined_query + " " + response).strip()
+
+    return {
+        "image_description": response,
+        "search_query": combined_query or state["question"],
     }
 
 
 def analyze_node(state: AgentState) -> AgentState:
     print("1. 🧠 تحليل السؤال وتحديد المادة...")
     # هنا نترك DeepSeek يحدد المادة
+    image_hint = (state.get("image_description") or "").strip()
     prompt = f"""
     تحليل سؤال طالب لتحديد المادة الدراسية المناسبة.
 
     السؤال: {state['question']}
     بيانات الطالب: {state['student_meta']}
+    { 'وصف الصورة: ' + image_hint if image_hint else ''}
 
     المطلوب منك:
     - استنتج المادة الدراسية التي ينتمي إليها السؤال.
@@ -138,7 +231,11 @@ def analyze_node(state: AgentState) -> AgentState:
         print(f"⚠️ فشل تحليل المادة: {e}")
         data = {}
 
+    allowed_subjects = {"arabic", "maths", "english", "science", "social_studies"}
     subject_en = data.get("subject_en", "maths").lower().strip()
+    if subject_en not in allowed_subjects:
+        print(f"   -> موضوع غير معروف '{subject_en}'، سيتم استخدام maths افتراضياً.")
+        subject_en = "maths"
     grade = state["student_meta"].get("grade", "1")
     term = state["student_meta"].get("term", "1")
     collection_name = f"{subject_en}_g{grade}_t{term}"
@@ -160,11 +257,19 @@ def retrieve_node(state: AgentState) -> AgentState:
     # زيادة عدد المستندات تدريجيًا: 5 → 10 → 15
     limit = min(10 + current_attempt * 10, 30)
 
-    search_query = state["search_query"]
+    image_hint = state.get("image_description", "")
+    base_query = (state["search_query"] or state["question"]).strip()
+    base_query = (base_query + " " + image_hint).strip() if image_hint else base_query
+
     if current_attempt == 1:
-        search_query = f"شرح مبسط لـ: {state['question']}"
+        search_query = f"{state['question']} شرح مختصر"
     elif current_attempt == 2:
         search_query = f"معلومة من الدرس حول: {state['question']}"
+    else:
+        search_query = base_query or state["question"]
+
+    if image_hint:
+        search_query = (search_query + " " + image_hint).strip()
 
     valid_docs = []
     try:
@@ -192,12 +297,15 @@ def generate_node(state: AgentState) -> AgentState:
     retrieved_context = "\n\n".join([d.page_content for d in state["retrieved_docs"]]) or "لا توجد بيانات من المنهج."
     memory = (state.get("memory") or "").strip()
     context_prompt = (state.get("context_prompt") or state["question"]).strip()
+    image_data_url = _format_image_data(state.get("image_base64"))
 
     context_sections = []
     if memory:
         context_sections.append(f"ملخص المحادثات السابقة:\n{memory}")
     if context_prompt:
         context_sections.append(f"السياق الحالي:\n{context_prompt}")
+    if state.get("image_description"):
+        context_sections.append(f"وصف الصورة:\n{state['image_description']}")
     context_sections.append(f"النصوص المسترجعة:\n{retrieved_context}")
     combined_context = "\n\n".join(context_sections)
     prompt = f"""
@@ -224,21 +332,39 @@ def generate_node(state: AgentState) -> AgentState:
   "reasoning": "ملخص تفكيرك في الحل أو سبب الإجابة"
 }}
 """
-    try:
-        res = llm.invoke(prompt).content
-        match = re.search(r"\{.*\}", res, re.DOTALL)
-        data = json.loads(match.group(0)) if match else {"answer": res, "confidence": "5", "reasoning": "no JSON"}
-        confidence = float(str(data.get("confidence", 0)).replace(",", "."))
-        print(f"   -> الثقة: {confidence:.1f}/10")
-        return {
-            "answer": data.get("answer", ""),
-            "confidence": confidence,
-            "reasoning": data.get("reasoning", ""),
-            "attempts": attempt,
-        }
-    except Exception as e:
-        print(f"⚠️ خطأ أثناء التوليد: {e}")
-        return {"answer": "حدث خطأ أثناء التوليد.", "confidence": 0, "reasoning": str(e), "attempts": attempt}
+    if image_data_url:
+        prompt += "\n[ملاحظة عن الصورة]\nيوجد صورة مرفقة من الطالب. استخرج أي نص أو معطيات مهمة من الصورة، ثم استخدم المراجع المسترجعة للتحقق قبل صياغة الإجابة.\n"
+    res = None
+    if image_data_url and openrouter_client:
+        print("   -> 🖼️ محاولة استخدام نموذج الرؤية عبر OpenRouter بسبب وجود صورة.")
+        res = _invoke_vision_model(prompt, image_data_url, max_tokens=700)
+        if res:
+            print("   -> ✅ تم توليد الإجابة باستخدام نموذج الرؤية.")
+        else:
+            print("⚠️ لم ينجح نموذج الرؤية، سيتم استخدام النموذج النصي.")
+
+    if not res:
+        try:
+            res = llm.invoke(prompt, max_tokens=700).content
+        except Exception as exc:
+            print(f"⚠️ خطأ أثناء التوليد: {exc}")
+            return {
+                "answer": "حدث خطأ أثناء التوليد.",
+                "confidence": 0,
+                "reasoning": str(exc),
+                "attempts": attempt,
+            }
+
+    match = re.search(r"\{.*\}", res, re.DOTALL)
+    data = json.loads(match.group(0)) if match else {"answer": res, "confidence": "5", "reasoning": "no JSON"}
+    confidence = float(str(data.get("confidence", 0)).replace(",", "."))
+    print(f"   -> الثقة: {confidence:.1f}/10")
+    return {
+        "answer": data.get("answer", ""),
+        "confidence": confidence,
+        "reasoning": data.get("reasoning", ""),
+        "attempts": attempt,
+    }
 
 # ----------------------------------------------------------
 def summarize_node(state: AgentState) -> AgentState:
@@ -296,13 +422,15 @@ def decide_to_retry(state: AgentState) -> str:
 def build_rag_graph():
     g = StateGraph(AgentState)
     g.add_node("memory", memory_node)
+    g.add_node("vision", vision_describe_node)
     g.add_node("analyze", analyze_node)
     g.add_node("retrieve", retrieve_node)
     g.add_node("generate", generate_node)
     g.add_node("summarize", summarize_node)
     g.add_node("update_memory", update_memory_node)
     g.set_entry_point("memory")
-    g.add_edge("memory", "analyze")
+    g.add_edge("memory", "vision")
+    g.add_edge("vision", "analyze")
     g.add_edge("analyze", "retrieve")
     g.add_edge("retrieve", "generate")
     g.add_conditional_edges(
@@ -321,7 +449,12 @@ def build_rag_graph():
 # ==========================================================
 # 🔹 Deployment Function
 # ==========================================================
-def run_agent(question: str, student_meta: dict, context_prompt: str | None = None):
+def run_agent(
+    question: str,
+    student_meta: dict,
+    context_prompt: str | None = None,
+    image_base64: str | None = None,
+):
     app = build_rag_graph()
     init_state: AgentState = {
         "question": question,
@@ -337,6 +470,8 @@ def run_agent(question: str, student_meta: dict, context_prompt: str | None = No
         "attempts": 0,
         "summary": "",
         "memory": "",
+        "image_base64": image_base64,
+        "image_description": "",
     }
     final = app.invoke(init_state)
     

@@ -81,5 +81,34 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-geist-sans);
+    background-color: transparent;
+    position: relative;
+    overflow-x: hidden;
   }
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.3;
+  filter: blur(35px);
+  animation: float 26s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(22px);
+  }
+}
+
+.education-icons {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='220' height='220' viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23719ECE' stroke-width='1.2' opacity='0.45'%3E%3Cpath d='M40 60h48l-24 24z'/%3E%3Cpath d='M150 40l24 14-24 14-24-14z'/%3E%3Cpath d='M60 150h34v24H60z'/%3E%3Ccircle cx='170' cy='170' r='16'/%3E%3Cpath d='M90 80l14 24H76z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  opacity: 0.05;
+  pointer-events: none;
 }

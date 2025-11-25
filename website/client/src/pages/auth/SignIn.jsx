@@ -1,24 +1,66 @@
-import { AuthLayout } from "@/components/auth/AuthLayout";
 import SignInForm from "@/components/auth/SignInForm";
-
-const curves = (
-  <>
-    <div className="absolute -left-[32%] -top-[28%] h-[120%] w-[70%] -rotate-[25deg] rounded-[60%] bg-gradient-to-br from-[#d7d4e4]/80 via-[#eceaf6]/60 to-transparent opacity-80" />
-    <div className="absolute inset-x-1/4 -top-[35%] h-[140%] w-[120%] rotate-[18deg] rounded-[60%] bg-gradient-to-tl from-transparent via-[#dedbf0]/80 to-transparent opacity-80" />
-    <div className="absolute -right-[30%] top-[8%] h-[120%] w-[65%] rotate-[18deg] rounded-[60%] bg-gradient-to-bl from-[#c9c4df]/80 via-[#e5e3f4]/70 to-transparent opacity-80" />
-    <div className="absolute -bottom-[38%] left-[-10%] h-[110%] w-[85%] -rotate-[12deg] rounded-[60%] bg-gradient-to-tr from-transparent via-[#dcd9eb]/70 to-[#bdb7d6]/60 opacity-70" />
-  </>
-);
+import logo from "@/public/logo.png";
+import authBackground from "@/public/background.png";
+import model from "@/public/model.png";
+import { motion, useReducedMotion } from "framer-motion";
 
 export default function SignInPage() {
   return (
-    <AuthLayout
-      maxWidth="max-w-[520px]"
-      className="bg-[#f5f6f4]"
-      containerClassName="bg-transparent shadow-none rounded-none p-0"
-      decor={curves}
-    >
-      <SignInForm />
-    </AuthLayout>
+    <div className="relative min-h-screen overflow-hidden bg-[#e7f1f5]">
+      <img
+        src={authBackground}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover opacity-90"
+      />
+      
+    {/* <div className="absolute left-10 top-10 hidden md:flex items-center z-20">
+        <img src={logo} alt="EduBot Egypt" className="h-52 w-auto flex-none object-contain block"/>
+        <div className="-ml-8 mx-0 h-16 w-px bg-[#2563eb]" />
+        <div className="pl-3 leading-tight text-right">
+          <p className="text-2xl font-bold text-[#2563eb]">EduBot Egypt</p>
+          <p className="text-base text-[#61749a] font-bold" dir="rtl">مساعد التعلم الذكي</p>
+        </div>
+    </div> */}
+
+    <div className="absolute left-10 top-10 hidden md:flex items-center z-20">
+    <motion.img
+      src={logo}
+      alt="EduBot Egypt"
+      className="h-48 w-auto flex-none object-contain block"
+      initial={{ x: -20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.7, delay: 0, ease: "easeOut" }}
+    />
+    <motion.div
+      className="-ml-8 mx-0 h-16 w-px bg-[#2563eb]"
+      style={{ transformOrigin: "center top" }}
+      initial={{ scaleY: 0, opacity: 0 }}
+      animate={{ scaleY: 1, opacity: 1 }}
+      transition={{ duration: 0.7, delay: 0.25, ease: "easeOut" }}
+    />
+    <div className="pl-3 leading-tight text-right">
+      <motion.div
+        initial={{ clipPath: "inset(0% 100% 0% 0%)", opacity: 0 }}
+        animate={{ clipPath: "inset(0% 0% 0% 0%)", opacity: 1 }}
+        transition={{ duration: 0.7, delay: 0.55, ease: "easeOut" }}
+      >
+        <p className="text-2xl font-semibold text-[#2563eb]">EduBot Egypt</p>
+        <p className="text-base text-[#61749a]" dir="rtl">
+          مساعد التعلم الذكي
+        </p>
+      </motion.div>
+    </div>
+  </div>
+
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-16">
+        <div className="relative w-full max-w-[520px]">
+          <div className="absolute inset-0 rounded-[34px] bg-white shadow-2xl ring-1 ring-white/70" />
+          
+          <div className="relative px-8 pb-12 pt-16 sm:px-12 md:px-14 md:pb-14 md:pt-18">
+            <SignInForm />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

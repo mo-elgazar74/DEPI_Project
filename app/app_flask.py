@@ -1,20 +1,27 @@
 import os
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
-from flask import Flask, request, jsonify
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from deploy import run_agent
-from rag_kpi_report import build_kpi_report
+from main import run_agentic_pipeline
+
+load_dotenv()
 
 # ==========================================================
 # 🔹 Flask Setup
 # ==========================================================
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "api_requests.log"
+
 app = Flask(__name__, template_folder="templates")
+app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
 CORS(app)
 
 # ==========================================================
@@ -55,14 +62,9 @@ def normalize_student_meta(meta: dict | None) -> dict:
 # ==========================================================
 # 🔹 Logs
 # ==========================================================
-LOG_DIR = Path("logs")
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-LOG_FILE = LOG_DIR / "api_requests.log"
-
-
 def log_request(payload: dict) -> None:
     entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         **payload,
     }
     with LOG_FILE.open("a", encoding="utf-8") as fp:
@@ -101,7 +103,7 @@ def save_chat_atomic(user_id: str, chat: dict) -> None:
 
 
 def now_iso() -> str:
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def make_title_from_first_utterance(text: str) -> str:
@@ -153,12 +155,6 @@ def build_context(chat: dict, question: str) -> str:
         context = context[-MAX_CHARS:]
     return context
 
-
-def run_rag(question: str, student_meta: dict | None = None, context: str | None = None):
-    meta = normalize_student_meta(student_meta)
-    return run_agent(question, meta, context)
-
-
 def _get_user_id() -> str:
     return (request.headers.get("X-User-Id") or "local").strip() or "local"
 
@@ -178,29 +174,41 @@ def api_ask():
     data = request.get_json(silent=True) or {}
     question = (data.get("question") or "").strip()
     student_meta = normalize_student_meta(data.get("student_meta"))
+    image_base64 = (data.get("image_base64") or "").strip()
 
     if not question:
         return jsonify({
             "status": "error",
-            "message": "يرجى إرسال السؤال في الحقل 'question'."
+            "message": "يرجى كتابة سؤال أو وصف مختصر في الحقل 'question' حتى مع وجود صورة مرفقة."
         })
 
+    mode_flag = int(data.get("mode_flag", 0))
+
     try:
-        result = run_rag(question, student_meta)
+        result = run_agentic_pipeline(
+            question=question,
+            student_meta=student_meta,
+            mode_flag=mode_flag,
+            image_base64=image_base64 or None,
+        )
+        state = result.get("state", {}) or {}
         response = {
             "status": "ok",
             "question": question,
             "answer": result.get("answer", ""),
-            "confidence": result.get("confidence", 0.0),
-            "reasoning": result.get("reasoning", ""),
-            "summary": result.get("summary", ""),
+            "confidence": state.get("confidence", 0.0),
+            "reasoning": state.get("reasoning", ""),
+            "summary": state.get("summary", ""),
             "student_meta": student_meta,
+            "mode": result.get("mode"),
         }
         log_request({
             "question": question,
+            "student_meta": student_meta,
+            "image_attached": bool(image_base64),
+            "mode_flag": mode_flag,
             "confidence": response["confidence"],
             "summary": response["summary"],
-            "student_meta": student_meta,
         })
         return jsonify(response)
     except Exception as exc:
@@ -208,6 +216,8 @@ def api_ask():
             "question": question,
             "error": str(exc),
             "student_meta": student_meta,
+            "image_attached": bool(image_base64),
+            "mode_flag": mode_flag,
         })
         return jsonify({
             "status": "error",
@@ -216,22 +226,40 @@ def api_ask():
         })
 
 
-@app.get("/api/kpis")
-def api_kpis():
+@app.post("/api/voice_question")
+def api_voice_question():
+    payload = request.get_json(silent=True) or {}
+    transcript = (payload.get("transcript") or "").strip()
+    student_meta = normalize_student_meta(payload.get("student_meta"))
+    mode_flag = int(payload.get("mode_flag", 0))
+    if not transcript:
+        return jsonify({"status": "error", "message": "transcript_required"}), 400
+
     try:
-        report = build_kpi_report()
-        return jsonify({
-            "status": "ok",
-            "kpis": report,
-        })
+        result = run_agentic_pipeline(
+            question=transcript,
+            student_meta=student_meta,
+            mode_flag=mode_flag,
+        )
+        state = result.get("state", {}) or {}
+        return jsonify(
+            {
+                "status": "ok",
+                "question_text": transcript,
+                "answer_text": result.get("answer", ""),
+                "mode": result.get("mode"),
+                "confidence": state.get("confidence"),
+                "reasoning": state.get("reasoning"),
+            }
+        )
     except Exception as exc:
-        return jsonify({
-            "status": "error",
-            "message": "تعذر توليد مؤشرات الأداء.",
-            "details": str(exc),
-        })
-
-
+        return jsonify(
+            {
+                "status": "error",
+                "message": "حدث خطأ أثناء معالجة طلب الصوت.",
+                "details": str(exc),
+            }
+        ), 500
 # ==========================================================
 # 🔹 Conversation System
 # ==========================================================
@@ -319,8 +347,9 @@ def api_chat_ask(chat_id: str):
     user_id = _get_user_id()
     data = request.get_json(silent=True) or {}
     question = (data.get("question") or "").strip()
+    image_base64 = (data.get("image_base64") or "").strip()
     if not question:
-        return jsonify({"status": "error", "message": "يرجى إدخال السؤال."})
+        return jsonify({"status": "error", "message": "يرجى إدخال سؤال نصي قصير حتى مع إرفاق صورة."})
 
     try:
         chat = _require_chat(user_id, chat_id)
@@ -333,13 +362,21 @@ def api_chat_ask(chat_id: str):
     timestamp = now_iso()
     chat.setdefault("messages", []).append({
         "role": "user",
-        "content": question,
+        "content": question if question else "[صورة]",
         "ts": timestamp,
     })
 
+    mode_flag = int(data.get("mode_flag", 0))
+
     try:
-        prompt_for_agent = build_context(chat, question)
-        result = run_rag(question, student_meta, prompt_for_agent)
+        _ = build_context(chat, question)
+        result = run_agentic_pipeline(
+            question=question,
+            student_meta=student_meta,
+            mode_flag=mode_flag,
+            image_base64=image_base64 or None,
+        )
+        state = result.get("state", {}) or {}
     except Exception as exc:
         log_request({
             "user_id": user_id,
@@ -347,6 +384,8 @@ def api_chat_ask(chat_id: str):
             "question": question,
             "error": str(exc),
             "student_meta": student_meta,
+            "image_attached": bool(image_base64),
+            "mode_flag": mode_flag,
         })
         return jsonify({
             "status": "error",
@@ -374,19 +413,22 @@ def api_chat_ask(chat_id: str):
         "user_id": user_id,
         "chat_id": chat_id,
         "question": question,
-        "confidence": result.get("confidence", 0.0),
-        "summary": result.get("summary", ""),
         "student_meta": student_meta,
+        "image_attached": bool(image_base64),
+        "mode_flag": mode_flag,
+        "summary": state.get("summary", ""),
+        "confidence": state.get("confidence", 0.0),
     })
 
     return jsonify({
         "status": "ok",
         "answer": assistant_message,
-        "confidence": result.get("confidence", 0.0),
-        "reasoning": result.get("reasoning", ""),
-        "summary": result.get("summary", ""),
+        "confidence": state.get("confidence", 0.0),
+        "reasoning": state.get("reasoning", ""),
+        "summary": state.get("summary", ""),
         "chat_id": chat_id,
         "student_meta": student_meta,
+        "mode": result.get("mode"),
     })
     
 # ==========================================================
