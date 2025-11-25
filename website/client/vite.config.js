@@ -13,4 +13,5 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  assetsInclude: ["**/*.glb", "**/*.mp4"],   // Include GLB and MP4 files
 });

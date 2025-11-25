@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
-import { Laptop, Moon, Sun, Check } from "lucide-react";
+import { Laptop, Moon, Sun, Check, User, Menu, X } from "lucide-react";
 
 import logo from "@/public/logo.svg";
 import { Button } from "@/components/edubot/ui/button";
@@ -14,11 +14,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/edubot/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/edubot/ui/avatar";
 
 const NAV_LINKS = [
-  { label: "Hero", href: "#hero" },
+  { label: "Home", href: "#hero" },
+  { label: "About", href: "#hero-content" },
   { label: "Features", href: "#features" },
   { label: "FAQ", href: "#faq" },
   { label: "Download", href: "#download" },
@@ -28,12 +32,8 @@ export default function NavBar() {
   const navigate = useNavigate();
   const { user, isSignedIn } = useUser();
   const { signOut } = useClerk();
-  const { theme, setTheme, systemTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { theme, setTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const userInitials = useMemo(() => {
     if (!user) return "U";
@@ -48,19 +48,16 @@ export default function NavBar() {
     { value: "system", label: "System", icon: Laptop },
   ];
 
-  const activeTheme = mounted ? (theme === "system" ? systemTheme : theme) : "light";
-  const ActiveIcon = activeTheme === "dark" ? Moon : activeTheme === "light" ? Sun : Laptop;
-
   const handleStartChatting = () => {
     navigate(isSignedIn ? "/edubot" : "/signin");
   };
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/home");
+    navigate("/signin");
   };
 
-  const renderThemeItems = () => (
+  const renderThemeItems = () =>
     themeOptions.map(({ value, label, icon: Icon }) => (
       <DropdownMenuItem
         key={value}
@@ -73,112 +70,81 @@ export default function NavBar() {
         </span>
         {theme === value && <Check className="h-4 w-4 text-primary" />}
       </DropdownMenuItem>
-    ))
-  );
+    ));
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 text-foreground shadow-sm backdrop-blur-xl transition-colors">
-      <div className="mx-auto w-full max-w-7xl px-4 py-3 md:px-6">
-        <div className="grid w-full grid-cols-1 items-center gap-4 md:grid-cols-[auto_1fr_auto]">
-          <div className="flex items-center gap-3">
-            <motion.img
+    <header className="fixed top-0 left-0 z-50 w-full bg-transparent text-white">
+      <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
+        <div className="relative flex w-full flex-wrap items-center gap-4">
+          {/* Left: logo + brand */}
+          <motion.div
+            className="flex flex-shrink-0 items-center gap-3"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <img
               src={logo}
-              alt="EduBot Egypt"
-              className="h-32 w-auto flex-none object-contain"
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
+              alt="EduBot logo"
+              className="h-10 w-10 rounded-full border border-white/40 object-cover"
             />
-            <motion.div
-              className="h-16 w-px -ml-4 bg-[#2563eb]"
-              style={{ transformOrigin: "center top" }}
-              initial={{ scaleY: 0, opacity: 0 }}
-              animate={{ scaleY: 1, opacity: 1 }}
-              transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-            />
-            <div className="pl-3 text-right leading-tight">
-              <motion.div
-                initial={{ clipPath: "inset(0% 100% 0% 0%)", opacity: 0 }}
-                animate={{ clipPath: "inset(0% 0% 0% 0%)", opacity: 1 }}
-                transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
-              >
-                <p className="text-xl font-semibold text-[#2563eb]">EduBot Egypt</p>
-                <p className="text-sm text-muted-foreground" dir="rtl">
-                  مساعد التعلم الذكي
-                </p>
-              </motion.div>
+            <div className="leading-tight">
+              <p className="text-lg font-semibold">EduBot</p>
+              <p className="text-xs uppercase font-semibold tracking-[0.5em] text-white/70">Egypt</p>
             </div>
-          </div>
+          </motion.div>
 
-          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-semibold">
-            {NAV_LINKS.map(({ label, href }) => (
-              <a key={href} href={href} className="transition hover:text-[#2563eb]">
+          {/* Center: navigation links */}
+          <nav className="pointer-events-none hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-6 text-sm font-medium text-white/80">
+            {NAV_LINKS.map(({ label, href, dir }) => (
+              <a
+                key={href}
+                href={href}
+                dir={dir || "ltr"}
+                className="pointer-events-auto whitespace-nowrap rounded-full px-3 py-1 text-white/80 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/15 hover:text-white"
+              >
                 {label}
               </a>
             ))}
           </nav>
 
-          <div className="flex items-center justify-end gap-2 md:gap-3">
-            {!isSignedIn && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10 rounded-full border-border bg-background/90 text-foreground"
-                  >
-                    {mounted ? <ActiveIcon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-                    <span className="sr-only">Toggle theme</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuLabel>Theme</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {renderThemeItems()}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
+          {/* Right: CTA + user */}
+          <div className="ml-auto flex items-center gap-3">
             <Button
               size="sm"
-              className="rounded-full bg-[#1f3665] px-4 text-white hover:bg-[#192846]"
+              className="rounded-full border border-white/40 bg-white/5 px-5 text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/25 hover:text-white hover:shadow-lg"
               onClick={handleStartChatting}
             >
               Start Chatting
             </Button>
 
-            {!isSignedIn ? (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="rounded-full"
-                  onClick={() => navigate("/signin")}
-                >
-                  Sign In
-                </Button>
-                <Button size="sm" className="rounded-full" onClick={() => navigate("/signup")}>
-                  Sign Up
-                </Button>
-              </>
-            ) : (
+            {isSignedIn ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-2 rounded-full border border-border/70 bg-background/90 px-2 py-1 pr-3 text-sm font-medium text-foreground shadow-sm transition hover:border-primary/60"
+                    className="flex items-center gap-2 rounded-full border border-white/30 bg-transparent px-2 py-1 pr-3 text-sm font-medium text-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/15 hover:text-white"
                   >
-                    <Avatar className="h-9 w-9 border border-border/70">
-                      <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User avatar"} />
-                      <AvatarFallback className="bg-primary/10 text-primary">{userInitials}</AvatarFallback>
+                    <Avatar className="h-8 w-8 border border-white/30">
+                      <AvatarImage
+                        src={user?.imageUrl}
+                        alt={user?.fullName || "User avatar"}
+                      />
+                      <AvatarFallback className="bg-transparent text-white">
+                        {userInitials}
+                      </AvatarFallback>
                     </Avatar>
-                    <span className="hidden sm:inline">{user?.firstName || "Account"}</span>
+                    <span className="hidden sm:inline">
+                      {user?.firstName || "Account"}
+                    </span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
-                      <span className="font-semibold">{user?.fullName || "User"}</span>
+                      <span className="font-semibold">
+                        {user?.fullName || "User"}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {user?.primaryEmailAddress?.emailAddress || "Account"}
                       </span>
@@ -192,17 +158,56 @@ export default function NavBar() {
                     <Link to="/dashboard">Dashboard</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Theme</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-44">
+                      {renderThemeItems()}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} variant="destructive">
                     Sign out
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Theme</DropdownMenuLabel>
-                  {renderThemeItems()}
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : (
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-full border border-white/40 bg-transparent px-3 py-1 text-sm font-medium text-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/15 hover:text-white"
+                onClick={() => navigate("/signin")}
+              >
+                <User className="h-4 w-4" />
+                Account
+              </button>
             )}
+
+            <button
+              className="p-2 text-white/80 transition-colors hover:text-white lg:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile navigation */}
+        {mobileMenuOpen && (
+          <div className="mt-4 border-t border-white/20 pb-4 lg:hidden">
+            <nav className="flex flex-col gap-3 pt-4">
+              {NAV_LINKS.map(({ label, href, dir }) => (
+                <a
+                  key={href}
+                  href={href}
+                  dir={dir || "ltr"}
+                  className="rounded-full border border-white/10 py-2 px-4 text-white/90 transition-all duration-200 hover:border-white/40 hover:bg-white/10 hover:text-white"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );

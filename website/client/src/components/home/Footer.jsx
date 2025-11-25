@@ -25,7 +25,7 @@ export default function Footer() {
   };
 
   return (
-    <footer className="border-t border-card-border bg-card">
+    <footer className="border-t border-border bg-transparent">
       <div className="mx-auto max-w-7xl px-6 py-16">
         <div className="mb-12 grid gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">

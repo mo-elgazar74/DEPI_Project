@@ -1,6 +1,7 @@
 import express from "express";
 import { clerkClient, getAuth } from "@clerk/express";
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
 
 const router = express.Router();
 
@@ -163,10 +164,10 @@ router.post("/chat/new", async (req, res) => {
       return res.status(401).json({ status: "error", message: "تسجيل الدخول مطلوب." });
     }
     const { studentMeta } = await resolveStudentMeta(req, res);
-    const payload = {
-      title: (req.body?.title || "").trim(),
-      student_meta: studentMeta,
-    };
+   const payload = {
+     title: (req.body?.title || "").trim(),
+     student_meta: studentMeta,
+   };
     const result = await forwardFlask("/api/chat/new", {
       method: "POST",
       headers: {
@@ -225,7 +226,7 @@ router.post("/chat/:chatId/ask", async (req, res) => {
   try {
     const question = (req.body?.question || "").trim();
     if (!question) {
-      return res.status(400).json({ status: "error", message: "يرجى إدخال السؤال." });
+      return res.status(400).json({ status: "error", message: "يرجى كتابة سؤال قصير حتى مع وجود صورة." });
     }
     const context = await resolveStudentMeta(req, res);
     if (context.isGuest) {
@@ -234,6 +235,8 @@ router.post("/chat/:chatId/ask", async (req, res) => {
     const payload = {
       question,
       student_meta: context.studentMeta,
+      image_base64: (req.body?.image_base64 || "").trim() || undefined,
+      mode_flag: Number(req.body?.mode_flag || 0),
     };
     const result = await forwardFlask(`/api/chat/${req.params.chatId}/ask`, {
       method: "POST",
@@ -254,7 +257,7 @@ router.post("/ask", async (req, res) => {
   try {
     const question = (req.body?.question || "").trim();
     if (!question) {
-      return res.status(400).json({ status: "error", message: "يرجى إدخال السؤال." });
+      return res.status(400).json({ status: "error", message: "يرجى كتابة سؤال قصير حتى مع وجود صورة." });
     }
 
     const context = await resolveStudentMeta(req, res);
@@ -268,6 +271,8 @@ router.post("/ask", async (req, res) => {
     const payload = {
       question,
       student_meta: context.studentMeta,
+      image_base64: (req.body?.image_base64 || "").trim() || undefined,
+      mode_flag: Number(req.body?.mode_flag || 0),
     };
     const result = await forwardFlask("/api/ask", {
       method: "POST",
@@ -287,6 +292,114 @@ router.post("/ask", async (req, res) => {
   } catch (error) {
     console.error("Failed to send quick question", error);
     res.status(error.status || 500).json({ status: "error", message: error.message });
+  }
+});
+
+router.post("/voice-question", async (req, res) => {
+  try {
+    const transcript = (req.body?.transcript || "").trim();
+    if (!transcript) {
+      return res.status(400).json({ status: "error", message: "transcript_required" });
+    }
+
+    const context = await resolveStudentMeta(req, res);
+    if (context.isGuest) {
+      const usage = getGuestUsage(req);
+      if (usage >= GUEST_LIMIT) {
+        return res.json({ status: "error", message: "لقد استخدمت جميع الأسئلة المجانية." });
+      }
+    }
+
+    const payload = {
+      transcript,
+      student_meta: context.studentMeta,
+      context: req.body?.context,
+      language: req.body?.language,
+      mode_flag: Number(req.body?.mode_flag || 0),
+    };
+
+    const result = await forwardFlask("/api/voice_question", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Id": context.flaskUserId,
+      },
+      body: payload,
+    });
+
+    if (context.isGuest) {
+      const usage = getGuestUsage(req) + 1;
+      setGuestUsage(res, usage);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to process voice question", error);
+    res
+      .status(error.status || 500)
+      .json({ status: "error", message: error.message, fallback: true });
+  }
+});
+
+router.post("/tts", async (req, res) => {
+  try {
+    const stream = req.query.stream !== "0";
+    const response = await fetch(`${FLASK_API_BASE}/api/tts${stream ? "?stream=1" : ""}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(req.body || {}),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw Object.assign(new Error(payload.message || response.statusText), {
+        status: response.status,
+        payload,
+      });
+    }
+
+    if (stream && response.body) {
+      res.setHeader("Content-Type", response.headers.get("content-type") || "audio/mpeg");
+      res.setHeader("Cache-Control", "no-store");
+      Readable.fromWeb(response.body).pipe(res);
+      return;
+    }
+
+    const payload = await response.json();
+    res.json(payload);
+  } catch (error) {
+    console.error("Failed to generate TTS", error);
+    res
+      .status(error.status || 500)
+      .json({ status: "error", message: error.message, payload: error.payload });
+  }
+});
+
+router.post("/live/session", async (req, res) => {
+  try {
+    const context = await resolveStudentMeta(req, res);
+    const payload = {
+      metadata: {
+        student: context.studentMeta,
+        client: req.body?.client || {},
+      },
+    };
+    const result = await forwardFlask("/api/live", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Id": context.flaskUserId,
+      },
+      body: payload,
+    });
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to create Vapi session", error);
+    res
+      .status(error.status || 500)
+      .json({ status: "error", message: error.message, fallback: true });
   }
 });
 

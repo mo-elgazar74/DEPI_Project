@@ -63,6 +63,18 @@ export default function Hero() {
         >
           <source src={videoSrc} type="video/mp4" />
         </video>
+        {/* Dimming overlay: will fade in when hero content becomes visible */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            opacity: mounted ? 1 : 0,
+            transition: "opacity 500ms ease-out",
+            pointerEvents: "none",
+          }}
+        />
       </section>
 
       {/* Second Section with Original Content */}

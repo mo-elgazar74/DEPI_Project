@@ -2,7 +2,6 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ClerkWrapper } from "./clerk";
 import ProtectedPage from "./components/ProtectedPage";
-import Navbar from "./components/Navbar";
 import SsoCallback from "./components/SsoCallback";
 import RequireProfile from "./components/RequireProfile";
 import SignInPage from "./pages/auth/SignIn";
@@ -14,6 +13,7 @@ import EduBotPage from "./pages/EduBot";
 import { useUser } from "@clerk/clerk-react";
 import EduBotLandingPage from "./pages/EduBotLanding";
 import { Toaster } from "@/components/edubot/ui/toaster";
+import ThemeProvider from "./components/ThemeProvider";
 
 function LandingRoute() {
   const { isLoaded, user } = useUser();
@@ -38,11 +38,9 @@ function LandingRoute() {
 
 function AppShell() {
   const location = useLocation();
-  const hideNavbar = location.pathname === "/";
 
   return (
     <>
-      {!hideNavbar && <Navbar />}
       <Toaster />
       <Routes>
         <Route path="/signin" element={<SignInPage />} />
@@ -77,9 +75,11 @@ function AppShell() {
 export default function App() {
   return (
     <ClerkWrapper>
-      <Router>
-        <AppShell />
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <AppShell />
+        </Router>
+      </ThemeProvider>
     </ClerkWrapper>
   );
 }

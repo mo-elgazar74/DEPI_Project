@@ -11,6 +11,9 @@ node_modules/
 .vscode/
 
 Data/
+chats/
+logs/
+memory_store/
 
 # C extensions
 *.so

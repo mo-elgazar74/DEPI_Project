@@ -7,11 +7,11 @@ export default function CTA() {
   };
 
   return (
-    <section className="bg-gradient-to-br from-primary to-chart-2 py-20 px-6 text-primary-foreground" id="download">
+    <section className="py-20 px-6 scroll-mt-32" id="download">
       <div className="mx-auto max-w-4xl space-y-8 text-center">
         <div className="space-y-4">
           <h2 className="text-3xl font-bold md:text-4xl">Get EduBot Now!</h2>
-          <p className="mx-auto max-w-2xl text-lg text-primary-foreground/90">
+          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
             Download our app or access it from your browser to start your AI-powered learning journey today.
           </p>
         </div>
@@ -40,7 +40,7 @@ export default function CTA() {
           <Button
             size="lg"
             variant="outline"
-            className="min-w-[200px] bg-primary-foreground/10 px-8 text-base text-primary-foreground hover:bg-primary-foreground/20"
+            className="min-w-[200px] px-8 text-base"
             onClick={handleClick("Web version")}
             data-testid="button-web-version"
           >

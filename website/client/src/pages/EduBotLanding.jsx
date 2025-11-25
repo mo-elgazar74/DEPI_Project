@@ -19,8 +19,11 @@ export default function EduBotLandingPage() {
   const activeTheme = mounted ? (theme === "system" ? systemTheme : theme) : "light";
 
   // Gradient backgrounds - COMMENTED OUT FOR EASY RESTORATION
-  const lightGradient = 'linear-gradient(135deg, rgb(108, 209, 223) 0%, rgb(5, 85, 97) 60%, rgb(177, 171, 171) 100%)';
+  const lightGradient = 'linear-gradient(135deg, #ffffffff 0%, #2a9296ff 55%, #02a4afff 100%)';
   const darkGradient = 'linear-gradient(135deg, rgba(0, 0, 0, 1) 0%, rgba(8, 119, 136, 1) 60%, rgba(59, 58, 58, 1) 100%)';
+  const lightTextColor = "#1b2329ff";
+  const darkTextColor = "#f5f7ff";
+  const pageTextColor = activeTheme === "dark" ? darkTextColor : lightTextColor;
 
   // // New gradient backgrounds for sections (complementing the robot hero image)
   // const lightGradient = 'linear-gradient(135deg, rgb(176, 224, 230) 0%, rgb(255, 218, 185) 50%, rgb(255, 239, 213) 100%)';
@@ -28,9 +31,10 @@ export default function EduBotLandingPage() {
 
   return (
     <div 
-      className="min-h-screen text-foreground transition-colors"
+      className="min-h-screen transition-colors"
       style={{
-        background: activeTheme === "dark" ? darkGradient : lightGradient
+        background: activeTheme === "dark" ? darkGradient : lightGradient,
+        color: pageTextColor,
       }}
     >
       <NavBar />

@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/edubot/ui/accordion";
+import useScrollReveal from "@/hooks/useScrollReveal";
 
 const FAQS = [
   {
@@ -44,32 +45,47 @@ const FAQS = [
 ];
 
 export default function FAQ() {
+  const [ref, mounted] = useScrollReveal({ once: false });
+
   return (
-    <section className="bg-card/30 py-20 px-6" id="faq">
-      <div className="mx-auto max-w-4xl">
+    <section className="py-20 px-6 scroll-mt-32" id="faq" ref={ref}>
+      <div
+        className="mx-auto max-w-4xl"
+        style={{
+          opacity: mounted ? 1 : 0,
+          transform: mounted ? "translateY(0)" : "translateY(20px)",
+          transition: "opacity 600ms cubic-bezier(.22,.9,.31,1), transform 600ms cubic-bezier(.22,.9,.31,1)",
+        }}
+      >
         <div className="mb-12 space-y-4 text-center">
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Have Questions?</h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-white/80">
             Find answers to the most common questions about Edu-Bot and how it can help you succeed.
           </p>
         </div>
 
         <Accordion type="single" collapsible className="space-y-4">
-          {FAQS.map((faq, index) => (
-            <AccordionItem
-              key={faq.question}
-              value={`item-${index}`}
-              className="rounded-lg border border-border bg-background px-6"
-              data-testid={`accordion-faq-${index}`}
-            >
-              <AccordionTrigger className="py-5 text-left text-base font-semibold">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="pb-5 text-muted-foreground">
-                {faq.answer}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+          {FAQS.map((faq, index) => {
+            const delay = `${index * 60}ms`;
+            return (
+              <AccordionItem
+                key={faq.question}
+                value={`item-${index}`}
+                className="rounded-xl border border-white/20 bg-white/40 backdrop-blur-sm px-6"
+                data-testid={`accordion-faq-${index}`}
+                style={{
+                  opacity: mounted ? 1 : 0,
+                  transform: mounted ? "translateY(0)" : "translateY(8px)",
+                  transition: `opacity 480ms cubic-bezier(.22,.9,.31,1) ${delay}, transform 480ms cubic-bezier(.22,.9,.31,1) ${delay}`,
+                }}
+              >
+                <AccordionTrigger className="py-5 text-left text-base font-semibold text-black">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="pb-5 text-black/80">{faq.answer}</AccordionContent>
+              </AccordionItem>
+            );
+          })}
         </Accordion>
       </div>
     </section>
