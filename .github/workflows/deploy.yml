@@ -15,18 +15,11 @@ jobs:
         run: |
           npm install -g @railway/cli
 
-      - name: Debug Token
-        run: |
-          echo "Token length: ${#RAILWAY_TOKEN}"
-          echo "Token starts with: ${RAILWAY_TOKEN:0:8}"
-          echo "Railway CLI version:"
-          railway --version
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_KEY }}
-
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_KEY }}
           CI: true
         run: |
-          railway up
+          railway up --service ai-service
+          railway up --service backend
+          railway up --service frontend
