@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./website/client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    env_file:
+      - ./website/client/.env
+
+  backend:
+    build:
+      context: ./website/server
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    depends_on:
+      - ai-service
+    env_file:
+      - ./website/server/.env
+    environment:
+      - PORT=4000
+      - FLASK_API_BASE=http://ai-service:8000
+
+  ai-service:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env
+    volumes:
+      - ./chats:/app/chats
+      - ./memory_store:/app/memory_store
+    # If .env is in root, we can point to it:
+    # - ./.env
+
