@@ -18,5 +18,6 @@ jobs:
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_KEY }}
+          CI: true
         run: |
           railway up
