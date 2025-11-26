@@ -15,11 +15,20 @@ jobs:
         run: |
           npm install -g @railway/cli
 
-      - name: Deploy to Railway
+      - name: Deploy AI Service
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_KEY }}
-          CI: true
         run: |
           railway up --service ai-service
+
+      - name: Deploy Backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_KEY }}
+        run: |
           railway up --service backend
+
+      - name: Deploy Frontend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_KEY }}
+        run: |
           railway up --service frontend
