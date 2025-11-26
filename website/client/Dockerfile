@@ -6,9 +6,6 @@ COPY package*.json ./
 RUN npm ci --prefer-offline --no-audit
 
 COPY . .
-
-RUN test -d src/lib
-
 RUN npm run build
 
 FROM nginx:alpine
