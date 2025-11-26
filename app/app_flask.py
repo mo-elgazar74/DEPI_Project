@@ -22,7 +22,10 @@ LOG_FILE = LOG_DIR / "api_requests.log"
 
 app = Flask(__name__, template_folder="templates")
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
-CORS(app, origins=["https://zoological-bravery-production-b747.up.railway.app"])
+CORS(app, origins=[
+    "https://tranquil-beauty-production.up.railway.app",
+    "http://localhost:4000"
+])
 
 
 # ==========================================================
