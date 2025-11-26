@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 from typing import TypedDict, List, Optional
 from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from qdrant_client import QdrantClient
 from langchain_core.documents import Document
@@ -37,6 +38,8 @@ OPENROUTER_VISION_MODEL = os.getenv("OPENROUTER_VISION_MODEL", "meta-llama/llama
 OPENROUTER_REFERER = os.getenv("OPENROUTER_REFERER", "")
 OPENROUTER_TITLE = os.getenv("OPENROUTER_TITLE", "")
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 # ==========================================================
 # 🔹 Clients and Embeddings
 # ==========================================================
@@ -48,13 +51,16 @@ embeddings = HuggingFaceEndpointEmbeddings(
     huggingfacehub_api_token=(HF_API_KEY)
 )
 
-# ✅ LLM DeepSeek
 llm = ChatOpenAI(
     openai_api_key=DEEPSEEK_API_KEY,
     openai_api_base=DEEPSEEK_BASE_URL,
     model=DEEPSEEK_CHAT_MODEL,
     temperature=0.2,
 )
+
+# llm = ChatGroq(
+#     api_key=GROQ_API_KEY,
+#     model="openai/gpt-oss-120b")
 
 openrouter_client: Optional[OpenAI] = None
 openrouter_headers: dict[str, str] = {}

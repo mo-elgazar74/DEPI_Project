@@ -76,20 +76,20 @@ except Exception as e:
 
 llm = None
 
-try:
-    if DEEPSEEK_API_KEY:
-        llm = ChatOpenAI(
-            openai_api_key=DEEPSEEK_API_KEY,
-            openai_api_base=DEEPSEEK_BASE_URL,
-            model=DEEPSEEK_CHAT_MODEL,
-            temperature=0.1,
-        )
-        print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
-    else:
-        print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
-except Exception as e:
-    print(f"⚠️ فشل تهيئة DeepSeek: {e}")
-    llm = None
+# try:
+#     if DEEPSEEK_API_KEY:
+#         llm = ChatOpenAI(
+#             openai_api_key=DEEPSEEK_API_KEY,
+#             openai_api_base=DEEPSEEK_BASE_URL,
+#             model=DEEPSEEK_CHAT_MODEL,
+#             temperature=0.1,
+#         )
+#         print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
+#     else:
+#         print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
+# except Exception as e:
+#     print(f"⚠️ فشل تهيئة DeepSeek: {e}")
+#     llm = None
 
 if llm is None:
     try:

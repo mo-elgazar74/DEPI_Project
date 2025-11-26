@@ -45,7 +45,7 @@ DEEPSEEK_CHAT_MODEL = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_BASE = os.getenv("GROQ_API_BASE", "https://api.groq.com/v1")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
 QDRANT_URL = os.getenv("URL_QDRANT")
 QDRANT_API_KEY = os.getenv("API_KEY_QDRANT")
@@ -60,6 +60,7 @@ OPENROUTER_REFERER = os.getenv("OPENROUTER_REFERER", "")
 OPENROUTER_TITLE = os.getenv("OPENROUTER_TITLE", "")
 
 CURRENT_IMAGE_BASE64: Optional[str] = None
+
 
 # ==========================================================
 # 🔹 Clients and Embeddings
@@ -85,20 +86,21 @@ except Exception as e:
 
 llm = None
 
-try:
-    if DEEPSEEK_API_KEY:
-        llm = ChatOpenAI(
-            openai_api_key=DEEPSEEK_API_KEY,
-            openai_api_base=DEEPSEEK_BASE_URL,
-            model=DEEPSEEK_CHAT_MODEL,
-            temperature=0.1,
-        )
-        print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
-    else:
-        print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
-except Exception as e:
-    print(f"⚠️ فشل تهيئة DeepSeek: {e}")
-    llm = None
+# try:
+#     if DEEPSEEK_API_KEY:
+#         llm = ChatOpenAI(
+#             openai_api_key=DEEPSEEK_API_KEY,
+#             openai_api_base=DEEPSEEK_BASE_URL,
+#             model=DEEPSEEK_CHAT_MODEL,
+#             temperature=0.1,
+#         )
+#         print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
+#         print(llm.invoke("hi"))
+#     else:
+#         print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
+# except Exception as e:
+#     print(f"⚠️ فشل تهيئة DeepSeek: {e}")
+#     llm = None
 
 if llm is None:
     try:
@@ -109,6 +111,7 @@ if llm is None:
                 temperature=0.1,
             )
             print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL}).")
+            print(llm.invoke("hi"))
         else:
             print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env.")
     except Exception as e:
@@ -137,6 +140,8 @@ else:
 # ==========================================================
 # 🔹 Student Memory (As Is)
 # ==========================================================
+
+
 MEMORY_DIR = ROOT / "memory_store"
 MEMORY_DIR.mkdir(exist_ok=True)
 

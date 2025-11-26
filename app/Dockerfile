@@ -1,24 +1,24 @@
-# Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Set the working directory in the container
 WORKDIR /app
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    PORT=8000
 
-# Copy the requirements file into the container at /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
 COPY . .
 
-# Expose port 8000
+RUN mkdir -p /app/chats /app/memory_store
+
 EXPOSE 8000
 
-# Define environment variable
-ENV PORT=8000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"
 
-# Run app_flask.py when the container launches
 CMD ["python", "app_flask.py"]
