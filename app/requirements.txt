@@ -10,3 +10,4 @@ qdrant-client
 langgraph
 tavily-python
 langchain-groq
+gunicorn
