@@ -7,7 +7,8 @@ COPY package*.json ./
 RUN npm ci --prefer-offline --no-audit
 
 COPY . .
-
+RUN ls -la src/lib
+RUN cat src/lib/utils.js
 RUN npm run build
 
 FROM nginx:alpine
