@@ -18,3 +18,7 @@ export async function getServerData(endpoint) {
   const res = await fetch(`${NODE_SERVER_URL}/${endpoint}`);
   return res.json();
 }
+
+export function cn(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
