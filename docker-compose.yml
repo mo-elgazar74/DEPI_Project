@@ -1,45 +1,25 @@
-services:
-  frontend:
-    build:
-      context: ./website/client
-      dockerfile: Dockerfile
-    ports:
-      - "5173:80"
-    depends_on:
-      - backend
-    env_file: .env
-    environment:
-      - VITE_API_BASE=http://localhost:4000
+name: Deploy to Railway
 
-  backend:
-    build:
-      context: ./website/server
-      dockerfile: Dockerfile
-    ports:
-      - "4000:4000"
-    depends_on:
-      - ai-service
-    env_file: .env
-    environment:
-      - PORT=4000
-      - FLASK_API_BASE=http://ai-service:8000
+on:
+  push:
+    branches:
+      - main
 
-  ai-service:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    env_file: .env
-    environment:
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - HUGGINGFACEHUB_API_TOKEN=${HUGGINGFACEHUB_API_TOKEN}
-      - URL_QDRANT=${URL_QDRANT}
-      - API_KEY_QDRANT=${API_KEY_QDRANT}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - TAVILY_API_KEY=${TAVILY_API_KEY}
-    volumes:
-      - ./chats:/app/chats
-      - ./memory_store:/app/memory_store
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
+      - name: Install Railway CLI
+        run: |
+          npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_KEY }}
+          CI: true
+        run: |
+          railway up --service ai-service
+          railway up --service backend
+          railway up --service frontend
