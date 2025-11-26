@@ -1,0 +1,12 @@
+flask
+flask-cors
+python-dotenv
+openai
+langchain
+langchain-openai
+langchain-huggingface
+langchain-community
+qdrant-client
+langgraph
+tavily-python
+langchain-groq

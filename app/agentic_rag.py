@@ -13,6 +13,7 @@ from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage, SystemMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_community.tools.tavily_search import TavilySearchResults
 
@@ -41,6 +42,10 @@ load_dotenv(ENV_PATH)
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_CHAT_MODEL = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat")
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_BASE = os.getenv("GROQ_API_BASE", "https://api.groq.com/v1")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 QDRANT_URL = os.getenv("URL_QDRANT")
 QDRANT_API_KEY = os.getenv("API_KEY_QDRANT")
@@ -78,15 +83,40 @@ except Exception as e:
     print(f"⚠️ HuggingFace Embeddings: فشل. تأكد من HF_API_KEY. خطأ: {e}")
     embeddings = None
 
-# ✅ LLM DeepSeek (The Agent's "Brain")
-llm = ChatOpenAI(
-    openai_api_key=DEEPSEEK_API_KEY,
-    openai_api_base=DEEPSEEK_BASE_URL,
-    model=DEEPSEEK_CHAT_MODEL,
-    temperature=0.1, # (يفضل حرارة منخفضة للـ Agents ليتبع التعليمات)
-)
-print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
+llm = None
 
+try:
+    if DEEPSEEK_API_KEY:
+        llm = ChatOpenAI(
+            openai_api_key=DEEPSEEK_API_KEY,
+            openai_api_base=DEEPSEEK_BASE_URL,
+            model=DEEPSEEK_CHAT_MODEL,
+            temperature=0.1,
+        )
+        print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
+    else:
+        print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
+except Exception as e:
+    print(f"⚠️ فشل تهيئة DeepSeek: {e}")
+    llm = None
+
+if llm is None:
+    try:
+        if GROQ_API_KEY:
+            llm = ChatGroq(
+                groq_api_key=GROQ_API_KEY,
+                model_name=GROQ_MODEL,
+                temperature=0.1,
+            )
+            print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL}).")
+        else:
+            print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env.")
+    except Exception as e:
+        print(f"⚠️ فشل تهيئة Groq: {e}")
+        llm = None
+
+if llm is None:
+    raise RuntimeError("❌ لا يوجد أي LLM متاح (لا DeepSeek ولا Groq).")
 
 # --- Vision Client (OpenRouter) ---
 openrouter_client: Optional[OpenAI] = None
