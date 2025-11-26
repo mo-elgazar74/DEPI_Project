@@ -11,17 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Node & Railway CLI
+      - name: Install Railway CLI
         run: |
-          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-          sudo apt-get install -y nodejs
           npm install -g @railway/cli
 
-      - name: Login to Railway
+      - name: Deploy to Railway
         env:
-          RAILWAY_API_KEY: ${{ secrets.RAILWAY_API_KEY }}
-        run: railway login --apiKey $RAILWAY_API_KEY
-
-      - name: Deploy Services
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_KEY }}
         run: |
-          railway up --non-interactive --detach
+          railway up
