@@ -11,22 +11,42 @@ import ragRouter from "./routes/rag.js";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(",") ?? [
+
+// ✅ تعديل هنا
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(",").map(origin => origin.trim()) ?? [
   "http://localhost:5173",
 ];
+
+console.log("✅ Allowed Origins:", CLIENT_ORIGIN); // للتأكد
 
 if (!process.env.CLERK_SECRET_KEY) {
   throw new Error("Missing CLERK_SECRET_KEY in server/.env");
 }
 
+// ✅ CORS Configuration الصحيحة
 app.use(
   cors({
-    origin: CLIENT_ORIGIN,
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: function (origin, callback) {
+      // السماح للـ requests بدون origin (مثل Postman أو Mobile Apps)
+      if (!origin) return callback(null, true);
+      
+      if (CLIENT_ORIGIN.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.error("❌ CORS blocked origin:", origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     credentials: true,
+    optionsSuccessStatus: 200
   })
 );
+
+// ✅ Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(clerkMiddleware());
@@ -45,7 +65,7 @@ app.get("/api/profile", requireAuth(), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
-      return res.status(401).end();
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     const user = await clerkClient.users.getUser(userId);
@@ -61,7 +81,7 @@ app.post("/api/profile", requireAuth(), async (req, res) => {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
-      return res.status(401).end();
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     const { birthday, grade, role } = req.body || {};
