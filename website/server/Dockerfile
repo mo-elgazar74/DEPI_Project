@@ -1,28 +1,18 @@
-# Build stage
-FROM node:20-alpine AS build
+FROM node:20-alpine
+
 WORKDIR /app
 
+ENV NODE_ENV=production
+
 COPY package*.json ./
-RUN npm ci --prefer-offline --no-audit
+
+RUN npm ci --prefer-offline --no-audit && npm cache clean --force
 
 COPY . .
 
-ARG VITE_CLERK_PUBLISHABLE_KEY
-ARG VITE_VAPI_ASSISTANT_ID
-ARG VITE_AI_URL
-ARG VITE_SERVER_URL
+EXPOSE 4000
 
-ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
-ENV VITE_VAPI_ASSISTANT_ID=$VITE_VAPI_ASSISTANT_ID
-ENV VITE_AI_URL=$VITE_AI_URL
-ENV VITE_SERVER_URL=$VITE_SERVER_URL
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:4000/health || exit 1
 
-# Build
-RUN npm run build
-
-# Production
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["npm", "start"]
