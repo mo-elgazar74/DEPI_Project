@@ -10,7 +10,11 @@ const roleOptions = [
   { value: "parent", label: "Parent" },
   { value: "teacher", label: "Teacher" },
 ];
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_BASE;
+
+if (!API_BASE) {
+  console.error("VITE_API_BASE is missing!");
+}
 
 const toIsoDate = (ddmmyyyy = "") => {
   const match = ddmmyyyy.match(/^(\d{2})-(\d{2})-(\d{4})$/);

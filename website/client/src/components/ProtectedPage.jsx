@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_BASE;
+
+if (!API_BASE) {
+  console.error("VITE_API_BASE is missing!");
+}
 
 export default function ProtectedPage() {
   const { getToken } = useAuth();
