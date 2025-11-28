@@ -63,7 +63,9 @@ app.get("/api/protected", requireAuth(), (req, res) => {
 
 app.get("/api/profile", requireAuth(), async (req, res) => {
   try {
-    const { userId } = getAuth(req);
+    const auth = getAuth(req);
+    console.log("AUTH OBJECT:", auth);
+    const userId = auth?.userId;
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -79,7 +81,9 @@ app.get("/api/profile", requireAuth(), async (req, res) => {
 
 app.post("/api/profile", requireAuth(), async (req, res) => {
   try {
-    const { userId } = getAuth(req);
+    const auth = getAuth(req);
+    console.log("AUTH OBJECT:", auth);
+    const userId = auth?.userId;
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -145,7 +149,9 @@ app.post("/api/profile", requireAuth(), async (req, res) => {
 
 app.delete("/api/profile/delete", requireAuth(), async (req, res) => {
   try {
-    const { userId } = getAuth(req);
+    const auth = getAuth(req);
+    console.log("AUTH OBJECT:", auth);
+    const userId = auth?.userId;
     if (!userId) {
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
@@ -162,6 +168,6 @@ app.delete("/api/profile/delete", requireAuth(), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 API listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 API listening on port ${PORT}`);
 });
