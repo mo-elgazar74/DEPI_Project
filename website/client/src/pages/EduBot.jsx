@@ -19,11 +19,9 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+import config from "@/config"; // ✅ استيراد
 
-if (!API_BASE) {
-  console.error("VITE_API_BASE is missing!");
-}
+const API_BASE = config.apiBase; 
 // const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 console.log("🔍 API_BASE:", API_BASE);

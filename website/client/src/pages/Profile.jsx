@@ -103,8 +103,9 @@ const PROVIDER_LABELS = {
   facebook: "Facebook",
 };
 
-const rawApiBase = import.meta.env.VITE_API_BASE?.trim() || "";
-const API_BASE = rawApiBase ? rawApiBase.replace(/\/$/, "") : "";
+import config from "@/config";
+
+const API_BASE = config.apiBase;
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser();

@@ -2,12 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/clerk-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+import config from "@/config"; 
 
-if (!API_BASE) {
-  console.error("VITE_API_BASE is missing!");
-}
-
+const API_BASE = config.apiBase;
 export default function RequireProfile({ children }) {
   const { isLoaded, user } = useUser();
   const { getToken } = useAuth();

@@ -2,12 +2,9 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import config from "@/config"
 
-const API_BASE = import.meta.env.VITE_API_BASE;
-
-if (!API_BASE) {
-  console.error("VITE_API_BASE is missing!");
-}
+const API_BASE = config.apiBase;
 
 export default function ProtectedPage() {
   const { getToken } = useAuth();
