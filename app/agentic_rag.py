@@ -25,7 +25,7 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langgraph.graph import StateGraph, END
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
-from image_cashe import get_cached_description, cache_description
+from image_cache import get_cached_description, cache_description
 
 # ==========================================================
 # 🔹 .ENV Configuration
@@ -42,13 +42,13 @@ load_dotenv(ENV_PATH)
 # ==========================================================
 # 🔹 .Env Keys
 # ==========================================================
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY","sk-bf9c6a9fc938409db08df2d098c218dc")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_CHAT_MODEL = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_BASE = os.getenv("GROQ_API_BASE", "https://api.groq.com/v1")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 QDRANT_URL = os.getenv("URL_QDRANT")
 QDRANT_API_KEY = os.getenv("API_KEY_QDRANT")
@@ -90,38 +90,77 @@ except Exception as e:
 
 llm = None
 
-# try:
-#     if DEEPSEEK_API_KEY:
-#         llm = ChatOpenAI(
-#             openai_api_key=DEEPSEEK_API_KEY,
-#             openai_api_base=DEEPSEEK_BASE_URL,
-#             model=DEEPSEEK_CHAT_MODEL,
-#             temperature=0.1,
-#         )
-#         print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
-#     else:
-#         print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
-# except Exception as e:
-#     print(f"⚠️ فشل تهيئة DeepSeek: {e}")
-#     llm = None
+# # 2️⃣ المحاولة الأولي: DeepSeek - deepseek-chat
+if llm is None:
+    try:
+        if DEEPSEEK_API_KEY:
+            llm = ChatOpenAI(
+                openai_api_key=DEEPSEEK_API_KEY,
+                openai_api_base=DEEPSEEK_BASE_URL,
+                model=DEEPSEEK_CHAT_MODEL or "deepseek-chat",
+                temperature=0.1,
+            )
+            print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL or 'deepseek-chat'}).")
+        else:
+            print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة OpenRouter + Qwen.")
+    except Exception as e:
+        print(f"⚠️ فشل تهيئة DeepSeek: {e}")
+        llm = None
 
+# 1️⃣ المحاولة الثانية: Groq - gpt-oss-120
 if llm is None:
     try:
         if GROQ_API_KEY:
             llm = ChatGroq(
                 groq_api_key=GROQ_API_KEY,
-                model_name=GROQ_MODEL,
+                model_name="openai/gpt-oss-120b",
                 temperature=0.1,
             )
-            print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL}).")
+            print(f"✅ Agent LLM (Groq): جاهز (موديل: {"openai/gpt-oss-120b"}).")
         else:
             print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env.")
     except Exception as e:
         print(f"⚠️ فشل تهيئة Groq: {e}")
         llm = None
 
+# 3️⃣ المحاولة الثالثة: OpenRouter - Qwen 2.5 72B Instruct
+OPENROUTER_CHAT_MODEL = os.getenv("OPENROUTER_CHAT_MODEL", "qwen/qwen-2.5-72b-instruct")
+
 if llm is None:
-    raise RuntimeError("❌ لا يوجد أي LLM متاح (لا DeepSeek ولا Groq).")
+    try:
+        if OPENROUTER_API_KEY:
+            llm = ChatOpenAI(
+                openai_api_key=OPENROUTER_API_KEY,
+                openai_api_base=OPENROUTER_BASE,
+                model=OPENROUTER_CHAT_MODEL,
+                temperature=0.1,
+            )
+            print(f"✅ Agent LLM (OpenRouter/Qwen): جاهز (موديل: {OPENROUTER_CHAT_MODEL}).")
+        else:
+            print("ℹ️ لا يوجد OPENROUTER_API_KEY في الـ .env.")
+    except Exception as e:
+        print(f"⚠️ فشل تهيئة OpenRouter/Qwen: {e}")
+        llm = None
+
+# 1️⃣ المحاولة الرابعة: Groq - Llama 3.3 70B Versatile
+try:
+    if GROQ_API_KEY:
+        llm = ChatGroq(
+            groq_api_key=GROQ_API_KEY,
+            model_name=GROQ_MODEL or "llama-3.3-70b-versatile",
+            temperature=0.1,
+        )
+        print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL or 'llama-3.3-70b-versatile'}).")
+    else:
+        print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env، سيتم تجربة DeepSeek.")
+except Exception as e:
+    print(f"⚠️ فشل تهيئة Groq: {e}")
+    llm = None
+
+
+# 🔹 تأكيد أخير
+if llm is None:
+    raise RuntimeError("❌ لا يوجد أي LLM متاح (لا Groq ولا DeepSeek ولا OpenRouter/Qwen).")
 
 # --- Vision Client (OpenRouter) ---
 openrouter_client: Optional[OpenAI] = None
@@ -534,11 +573,11 @@ SYSTEM_PROMPT = """أنت "مساعد تعليمي" ذكي وخبير. مهمت�
 -   استخدم وصف الصورة مع نص السؤال في الخطوات التالية.
 
 ### الخطوة 2: تحليل السؤال والمنهج (الأولوية القصوى)
--   **هذه هي الخطوة الأهم.** يجب أن تقرر: هل هذا سؤال "أكاديمي" (يخص المنهج) أم "عام" (يخص العالم الخارجي)؟
+-   **هذه هي الخطوة الأهم.** يجب عليك أن تقرر: هل هذا سؤال "أكاديمي" (يخص المنهج) أم "عام" (يخص العالم الخارجي)؟
 -   **إذا كان أكاديمياً (الأولوية):**
     1.  **استنتج المادة:** من نص السؤال (ووصف الصورة)، **يجب عليك استنتاج** المادة الدراسية.
         -   المواد المتاحة: `['arabic', 'maths', 'english', 'science', 'social_studies']`.
-    2.  **كوّن اسم الكولكشن:** استخدم المادة المستنتجة + بيانات الطالب. (مثال: طالب بـ `grade: 5`, `term: 1` وسأل عن الرياضيات -> `g5_t1`).
+    2.  **كوّن اسم الكولكشن:** استخدم صيغة `g{{grade}}_t{{term}}` (مثال: طالب بـ `grade: 5`, `term: 1` -> `g5_t1`).
     3.  **كوّن سؤال البحث:** أعد صياغة سؤال الطالب (ووصف الصورة إن وجد) ليصبح `search_query` ممتاز.
     4.  **استدعِ الأداة:** استدعِ `retrieve_documents` مع الـ `collection_name` والـ `search_query` والـ `subject` (المادة المستنتجة).
 -   **إذا كان عاماً (مثل "ما عاصمة فرنسا؟"):**
@@ -789,25 +828,25 @@ def run_agentic_rag(
 # ==========================================================
 if __name__ == "__main__":
     # (بيانات الطالب)
-    student_meta = {"grade": "5", "term": "1", "name": "Omar", "age": "11"}
+    student_meta = {"grade": "4", "term": "1", "name": "Omar", "age": "11"}
 
-    # --- تجربة 1: سؤال إنجليزي (يجب أن يستنتج 'english') ---
-    print("\n" + "#" * 50)
-    print("### تجربة 1: سؤال إنجليزي (English)")
-    print("#" * 50)
-    question_en = "write a short paragraph about your favourite meal"
-    run_agentic_rag(question_en, student_meta)
+    # # --- تجربة 1: سؤال إنجليزي (يجب أن يستنتج 'english') ---
+    # print("\n" + "#" * 50)
+    # print("### تجربة 1: سؤال إنجليزي (English)")
+    # print("#" * 50)
+    # question_en = "write a short paragraph about your favourite meal"
+    # run_agentic_rag(question_en, student_meta)
 
     # --- تجربة 2: سؤال رياضيات (يجب أن يستنتج 'maths') ---
     print("\n" + "#" * 50)
     print("### تجربة 2: سؤال رياضيات (Maths)")
     print("#" * 50)
-    question_math = "ما هو المضاعف المشترك الأصغر للعددين 6 و 8؟"
+    question_math = "اشرح لي الضرب بالتجزئه مع مثال على ذلك."
     run_agentic_rag(question_math, student_meta)
 
-    # --- تجربة 3: سؤال عام (يجب أن يستخدم 'web_search') ---
-    print("\n" + "#" * 50)
-    print("### تجربة 3: سؤال عام (Web Search)")
-    print("#" * 50)
-    question_general = "ما هي عاصمة البرازيل؟"
-    run_agentic_rag(question_general, student_meta)
+    # # --- تجربة 3: سؤال عام (يجب أن يستخدم 'web_search') ---
+    # print("\n" + "#" * 50)
+    # print("### تجربة 3: سؤال عام (Web Search)")
+    # print("#" * 50)
+    # question_general = "ما هي عاصمة البرازيل؟"
+    # run_agentic_rag(question_general, student_meta)
