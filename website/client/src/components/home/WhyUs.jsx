@@ -48,8 +48,8 @@ export default function WhyUs() {
                   transition: `opacity 520ms cubic-bezier(.22,.9,.31,1) ${delay}, transform 520ms cubic-bezier(.22,.9,.31,1) ${delay}`,
                 }}
               >
-                <Card className="h-full border-none shadow-md hover:shadow-xl transition-shadow duration-500 bg-white/40 backdrop-blur-md">
-                  <CardContent className="p-5 sm:p-6 flex flex-col items-center text-center space-y-3 sm:space-y-4">
+                <Card className="h-full border border-white/25 bg-white/40 dark:bg-white/5 shadow-lg hover:shadow-xl transition-shadow duration-500 backdrop-blur-sm">
+                  <CardContent className="p-5 sm:p-6 flex flex-col items-center text-center space-y-3 sm:space-y-4 text-foreground">
                     <div className="p-2.5 sm:p-3 rounded-2xl bg-primary/10 text-primary mb-1 sm:mb-2">
                       <Icon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.5} />
                     </div>
