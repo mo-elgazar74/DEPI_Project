@@ -38,7 +38,7 @@ load_dotenv(ENV_PATH)
 # ==========================================================
 # 🔹 .Env Keys (نفس المفاتيح)
 # ==========================================================
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY","sk-bf9c6a9fc938409db08df2d098c218dc")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_CHAT_MODEL = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat")
 
@@ -683,6 +683,7 @@ if __name__ == "__main__":
     # question_general = "ما هي عاصمة البرازيل؟"
 
     # run_standard_rag(question_general, student_meta)
+
 
 
 
