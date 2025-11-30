@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.11-slim
 
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
@@ -6,12 +6,13 @@ ENV PYTHONUNBUFFERED=1 \
     IMAGE_CACHE_DIR=/app/image_cache
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.prod.txt .
 RUN pip install --no-cache-dir -r requirements.prod.txt
+
+RUN pip install --no-cache-dir pillow
 
 COPY . .
 
