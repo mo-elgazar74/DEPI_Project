@@ -81,22 +81,22 @@ except Exception as e:
 
 llm = None
 
-# # 2️⃣ المحاولة الأولي: DeepSeek - deepseek-chat
-if llm is None:
-    try:
-        if DEEPSEEK_API_KEY:
-            llm = ChatOpenAI(
-                openai_api_key=DEEPSEEK_API_KEY,
-                openai_api_base=DEEPSEEK_BASE_URL,
-                model=DEEPSEEK_CHAT_MODEL or "deepseek-chat",
-                temperature=0.1,
-            )
-            print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL or 'deepseek-chat'}).")
-        else:
-            print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة OpenRouter + Qwen.")
-    except Exception as e:
-        print(f"⚠️ فشل تهيئة DeepSeek: {e}")
-        llm = None
+# # # 2️⃣ المحاولة الأولي: DeepSeek - deepseek-chat
+# if llm is None:
+#     try:
+#         if DEEPSEEK_API_KEY:
+#             llm = ChatOpenAI(
+#                 openai_api_key=DEEPSEEK_API_KEY,
+#                 openai_api_base=DEEPSEEK_BASE_URL,
+#                 model=DEEPSEEK_CHAT_MODEL or "deepseek-chat",
+#                 temperature=0.1,
+#             )
+#             print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL or 'deepseek-chat'}).")
+#         else:
+#             print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة OpenRouter + Qwen.")
+#     except Exception as e:
+#         print(f"⚠️ فشل تهيئة DeepSeek: {e}")
+#         llm = None
         
 # 1️⃣ المحاولة الثانية: Groq - gpt-oss-120
 if llm is None:
