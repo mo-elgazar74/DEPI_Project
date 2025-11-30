@@ -43,7 +43,7 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
 DEEPSEEK_CHAT_MODEL = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 QDRANT_URL = os.getenv("URL_QDRANT")
 QDRANT_API_KEY = os.getenv("API_KEY_QDRANT")
@@ -80,20 +80,20 @@ except Exception as e:
 
 llm = None
 
-try:
-    if DEEPSEEK_API_KEY:
-        llm = ChatOpenAI(
-            openai_api_key=DEEPSEEK_API_KEY,
-            openai_api_base=DEEPSEEK_BASE_URL,
-            model=DEEPSEEK_CHAT_MODEL,
-            temperature=0.1,
-        )
-        print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
-    else:
-        print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
-except Exception as e:
-    print(f"⚠️ فشل تهيئة DeepSeek: {e}")
-    llm = None
+# try:
+#     if DEEPSEEK_API_KEY:
+#         llm = ChatOpenAI(
+#             openai_api_key=DEEPSEEK_API_KEY,
+#             openai_api_base=DEEPSEEK_BASE_URL,
+#             model=DEEPSEEK_CHAT_MODEL,
+#             temperature=0.1,
+#         )
+#         print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
+#     else:
+#         print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
+# except Exception as e:
+#     print(f"⚠️ فشل تهيئة DeepSeek: {e}")
+#     llm = None
 
 if llm is None:
     try:
