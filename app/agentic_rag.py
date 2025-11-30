@@ -25,7 +25,7 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langgraph.graph import StateGraph, END
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
-from image_cache import get_cached_description, cache_description
+from image_cashe import get_cached_description, cache_description
 
 # ==========================================================
 # 🔹 .ENV Configuration
