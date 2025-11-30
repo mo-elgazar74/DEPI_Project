@@ -143,19 +143,20 @@ if llm is None:
         llm = None
 
 # 1️⃣ المحاولة الرابعة: Groq - Llama 3.3 70B Versatile
-try:
-    if GROQ_API_KEY:
-        llm = ChatGroq(
-            groq_api_key=GROQ_API_KEY,
-            model_name=GROQ_MODEL or "llama-3.3-70b-versatile",
-            temperature=0.1,
-        )
-        print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL or 'llama-3.3-70b-versatile'}).")
-    else:
-        print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env، سيتم تجربة DeepSeek.")
-except Exception as e:
-    print(f"⚠️ فشل تهيئة Groq: {e}")
-    llm = None
+if llm is None:
+    try:
+        if GROQ_API_KEY:
+            llm = ChatGroq(
+                groq_api_key=GROQ_API_KEY,
+                model_name=GROQ_MODEL or "llama-3.3-70b-versatile",
+                temperature=0.1,
+            )
+            print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL or 'llama-3.3-70b-versatile'}).")
+        else:
+            print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env، سيتم تجربة DeepSeek.")
+    except Exception as e:
+        print(f"⚠️ فشل تهيئة Groq: {e}")
+        llm = None
 
 
 # 🔹 تأكيد أخير
