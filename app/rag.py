@@ -97,8 +97,24 @@ if llm is None:
     except Exception as e:
         print(f"⚠️ فشل تهيئة DeepSeek: {e}")
         llm = None
+        
+# 1️⃣ المحاولة الثانية: Groq - gpt-oss-120
+if llm is None:
+    try:
+        if GROQ_API_KEY:
+            llm = ChatGroq(
+                groq_api_key=GROQ_API_KEY,
+                model_name=GROQ_MODEL,
+                temperature=0.1,
+            )
+            print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL}).")
+        else:
+            print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env.")
+    except Exception as e:
+        print(f"⚠️ فشل تهيئة Groq: {e}")
+        llm = None
 
-# 3️⃣ المحاولة الثانية: OpenRouter - Qwen 2.5 72B Instruct
+# 3️⃣ المحاولة الثالثة: OpenRouter - Qwen 2.5 72B Instruct
 OPENROUTER_CHAT_MODEL = os.getenv("OPENROUTER_CHAT_MODEL", "qwen/qwen-2.5-72b-instruct")
 
 if llm is None:
@@ -117,7 +133,7 @@ if llm is None:
         print(f"⚠️ فشل تهيئة OpenRouter/Qwen: {e}")
         llm = None
 
-# 1️⃣ المحاولة الثالثة: Groq - Llama 3.3 70B Versatile
+# 1️⃣ المحاولة الرابعة: Groq - Llama 3.3 70B Versatile
 try:
     if GROQ_API_KEY:
         llm = ChatGroq(
@@ -667,4 +683,5 @@ if __name__ == "__main__":
     # question_general = "ما هي عاصمة البرازيل؟"
 
     # run_standard_rag(question_general, student_meta)
+
 
