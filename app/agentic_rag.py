@@ -19,10 +19,13 @@ from langchain_community.tools.tavily_search import TavilySearchResults
 
 # --- Qdrant Import ---
 from qdrant_client import QdrantClient
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 # --- LangGraph Imports ---
 from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
+from image_cache import get_cached_description, cache_description
 
 # ==========================================================
 # 🔹 .ENV Configuration
@@ -45,7 +48,7 @@ DEEPSEEK_CHAT_MODEL = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_BASE = os.getenv("GROQ_API_BASE", "https://api.groq.com/v1")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 QDRANT_URL = os.getenv("URL_QDRANT")
 QDRANT_API_KEY = os.getenv("API_KEY_QDRANT")
@@ -54,13 +57,14 @@ HF_API_KEY = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_API_KEY_2 = os.getenv("OPENROUTER_API_KEY_2")
 OPENROUTER_BASE = os.getenv("OPENROUTER_BASE", "https://openrouter.ai/api/v1")
 OPENROUTER_VISION_MODEL = os.getenv("OPENROUTER_VISION_MODEL", "meta-llama/llama-3.2-90b-vision-instruct")
+OPENROUTER_BACKUP_VISION_MODEL = os.getenv("OPENROUTER_BACKUP_VISION_MODEL", "qwen/qwen-vl-plus")
 OPENROUTER_REFERER = os.getenv("OPENROUTER_REFERER", "")
 OPENROUTER_TITLE = os.getenv("OPENROUTER_TITLE", "")
 
 CURRENT_IMAGE_BASE64: Optional[str] = None
-
 
 # ==========================================================
 # 🔹 Clients and Embeddings
@@ -74,7 +78,7 @@ except Exception as e:
 
 try:
     embeddings = HuggingFaceEndpointEmbeddings(
-        model="sentence-transformers/all-MiniLM-L6-v2",
+        model="intfloat/multilingual-e5-large",
         huggingfacehub_api_token=HF_API_KEY
     )
     # (اختبار سريع للـ Embeddings)
@@ -86,21 +90,20 @@ except Exception as e:
 
 llm = None
 
-# try:
-#     if DEEPSEEK_API_KEY:
-#         llm = ChatOpenAI(
-#             openai_api_key=DEEPSEEK_API_KEY,
-#             openai_api_base=DEEPSEEK_BASE_URL,
-#             model=DEEPSEEK_CHAT_MODEL,
-#             temperature=0.1,
-#         )
-#         print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
-#         print(llm.invoke("hi"))
-#     else:
-#         print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
-# except Exception as e:
-#     print(f"⚠️ فشل تهيئة DeepSeek: {e}")
-#     llm = None
+try:
+    if DEEPSEEK_API_KEY:
+        llm = ChatOpenAI(
+            openai_api_key=DEEPSEEK_API_KEY,
+            openai_api_base=DEEPSEEK_BASE_URL,
+            model=DEEPSEEK_CHAT_MODEL,
+            temperature=0.1,
+        )
+        print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
+    else:
+        print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
+except Exception as e:
+    print(f"⚠️ فشل تهيئة DeepSeek: {e}")
+    llm = None
 
 if llm is None:
     try:
@@ -111,7 +114,6 @@ if llm is None:
                 temperature=0.1,
             )
             print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL}).")
-            print(llm.invoke("hi"))
         else:
             print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env.")
     except Exception as e:
@@ -140,8 +142,6 @@ else:
 # ==========================================================
 # 🔹 Student Memory (As Is)
 # ==========================================================
-
-
 MEMORY_DIR = ROOT / "memory_store"
 MEMORY_DIR.mkdir(exist_ok=True)
 
@@ -157,10 +157,66 @@ def save_student_memory(name: str, summary: str):
     path = MEMORY_DIR / f"{name}.json"
     path.write_text(json.dumps({"summary": summary}, ensure_ascii=False, indent=2), encoding="utf-8")
 
-def update_memory(old: str, question: str, answer: str) -> str:
-    text = f"سأل الطالب: {question[:200]}\nأجاب المساعد: {answer[:300]}"
+def update_memory(old: str, question: str, answer: str, image_desc: str = "") -> str:
+    text = f"سأل الطالب: {question[:200]}"
+    if image_desc:
+        text += f"\n[وصف الصورة المرفقة: {image_desc[:200]}...]"
+    
+    text += f"\nأجاب المساعد (ملخص): {answer[:1000]}"
     merged = (old.strip() + "\n" + text).strip()
-    return merged[-2000:] # الاحتفاظ بآخر 2000 حرف فقط
+    return merged[-5000:] # الاحتفاظ بآخر 5000 حرف
+
+def summarize_for_memory(answer_text: str) -> str:
+    """تلخيص الإجابة باستخدام LLM لحفظها في الذاكرة (نفس منطق rag.py)"""
+    if not answer_text: return ""
+    
+    prompt = f"""
+لخص الإجابة التالية بشكل شامل لتعمل كـ "ذاكرة" للمحادثة.
+الهدف هو الاحتفاظ بالمعلومات الهامة لاستخدامها لاحقاً.
+
+القواعد:
+1. احتفظ بالتفاصيل الجوهرية مثل: الأسئلة في الاختبارات، الأرقام، التواريخ، والأسماء.
+2. إذا كانت الإجابة تحتوي على قائمة (مثل أسئلة كويز)، لخصها بذكر النقاط الرئيسية أو الأسئلة نفسها باختصار.
+3. اجعل الملخص مركزاً ومفيداً لاسترجاع السياق لاحقاً.
+
+الإجابة الأصلية:
+{answer_text}
+
+الملخص الشامل:
+"""
+    try:
+        # نستخدم llm الموجود في الملف (سواء DeepSeek أو Groq)
+        return llm.invoke(prompt, max_tokens=500).content.strip()
+    except Exception as e:
+        print(f"⚠️ فشل تلخيص الذاكرة: {e}")
+        return answer_text[:1000] # Fallback
+
+
+def get_current_term() -> str:
+    """
+    تحديد الترم الحالي بناءً على التاريخ:
+    - الترم الأول: من 15 يوليو إلى 31 يناير
+    - الترم الثاني: من 1 فبراير إلى 14 يوليو
+    """
+    from datetime import datetime
+    
+    now = datetime.now()
+    month = now.month
+    day = now.day
+    
+    # Term 1: July 15 - January 31
+    # Term 2: February 1 - July 14
+    
+    if month >= 7:
+        if month == 7 and day < 15:
+            return "2"
+        else:
+            return "1"
+    elif month <= 1:
+        return "1"
+    else: 
+        return "2"
+
 
 # ==========================================================
 # 🔹 Helper Functions (Vision)
@@ -173,9 +229,34 @@ def _format_image_data(image_base64: Optional[str]) -> Optional[str]:
     return f"data:image/png;base64,{image_base64}"
 
 def _invoke_vision_model(prompt: str, image_data_url: str, max_tokens: int = 200) -> Optional[str]:
-    if not openrouter_client: return None
+    """Try primary API key first, then backup API key if primary fails."""
+    if not openrouter_client: 
+        return None
+    
+    # Try with primary API key
+    result = _try_vision_with_api(openrouter_client, "الأساسي", prompt, image_data_url, max_tokens)
+    if result:
+        return result
+    
+    # If primary failed and backup API key exists, try backup
+    if OPENROUTER_API_KEY_2:
+        print(f"🔄 محاولة استخدام API الاحتياطي (OPENROUTER_API_KEY_2)...")
+        try:
+            backup_client = OpenAI(base_url=OPENROUTER_BASE, api_key=OPENROUTER_API_KEY_2)
+            result = _try_vision_with_api(backup_client, "الاحتياطي", prompt, image_data_url, max_tokens)
+            if result:
+                return result
+        except Exception as exc:
+            print(f"❌ فشل تهيئة API الاحتياطي: {exc}")
+    
+    return None
+
+
+def _try_vision_with_api(client: OpenAI, api_label: str, prompt: str, image_data_url: str, max_tokens: int) -> Optional[str]:
+    """Try vision model with a specific API client (tries primary model, then backup model)."""
+    # Try primary model first
     try:
-        response = openrouter_client.chat.completions.create(
+        response = client.chat.completions.create(
             model=OPENROUTER_VISION_MODEL,
             messages=[
                 {
@@ -190,10 +271,37 @@ def _invoke_vision_model(prompt: str, image_data_url: str, max_tokens: int = 200
             extra_headers=openrouter_headers or None,
         )
         result = response.choices[0].message.content.strip()
-        return result if result else None
+        if result:
+            print(f"✅ نجح API {api_label} + النموذج الأساسي: {OPENROUTER_VISION_MODEL}")
+            return result
     except Exception as exc:
-        print(f"⚠️ Vision Client (OpenRouter): فشل استدعاء النموذج: {exc}")
-        return None
+        print(f"⚠️ فشل API {api_label} + النموذج الأساسي ({OPENROUTER_VISION_MODEL}): {exc}")
+        print(f"🔄 محاولة النموذج الاحتياطي: {OPENROUTER_BACKUP_VISION_MODEL}")
+        
+        # Try backup model
+        try:
+            response = client.chat.completions.create(
+                model=OPENROUTER_BACKUP_VISION_MODEL,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": image_data_url}},
+                        ],
+                    }
+                ],
+                max_tokens=max_tokens,
+                extra_headers=openrouter_headers or None,
+            )
+            result = response.choices[0].message.content.strip()
+            if result:
+                print(f"✅ نجح API {api_label} + النموذج الاحتياطي: {OPENROUTER_BACKUP_VISION_MODEL}")
+                return result
+        except Exception as backup_exc:
+            print(f"❌ فشل API {api_label} + النموذج الاحتياطي: {backup_exc}")
+    
+    return None
 
 
 def _collect_tool_context(messages: List[BaseMessage]) -> str:
@@ -290,6 +398,12 @@ def describe_image(image_base64: str | None = None) -> str:
     if not image_data_url:
         return "خطأ: لم يتم تمرير بيانات الصورة بشكل صحيح."
 
+    # Check Cache First
+    cached_desc = get_cached_description(data)
+    if cached_desc:
+        print(f"   -> ✅ (أداة) تم العثور على وصف الصورة في الكاش: {cached_desc[:50]}...")
+        return cached_desc
+
     instructions = (
         "أنت محلل يساعد في فهم الصور التعليمية.\n"
         "أعطني وصفًا موجزًا باللغة العربية لما يظهر في الصورة، مع التركيز على الكلمات المفتاحية أو الرموز أو العناوين داخلها.\n"
@@ -300,25 +414,51 @@ def describe_image(image_base64: str | None = None) -> str:
     if not response:
         return "لم يتم الحصول على وصف للصورة."
     print(f"   -> (أداة) وصف الصورة: {response}...")
+    
+    # Save to Cache
+    cache_description(data, response)
     return response
 
 # ----------------------------------------------------------
 
 @tool
-def retrieve_documents(collection_name: str, search_query: str, limit: int = 15) -> str:
+def retrieve_documents(collection_name: str, search_query: str, subject: str = "", limit: int = 15) -> str:
     """
     يستخدم للبحث في كتب ومنهج الطالب (Vector Database) عن معلومات متعلقة بسؤاله.
     هذه الأداة هي المصدر الرئيسي للمعلومات الأكاديمية.
+    
+    Args:
+        collection_name: اسم الكولكشن (مثال: g5_t1 للصف الخامس الترم الأول)
+        search_query: سؤال البحث
+        subject: المادة للفلترة (مثال: arabic, maths, english, science, social_studies)
+        limit: عدد النتائج المطلوبة
     """
     print(f"... 🔍 (أداة) جارٍ البحث في '{collection_name}' عن '{search_query}' ...")
+    if subject:
+        print(f"   -> 🎯 فلترة حسب المادة: {subject}")
+    
     if not qdrant_client or not embeddings:
         return "خطأ: خدمات البحث (Qdrant أو Embeddings) غير مهيأة."
         
     try:
         query_vector = embeddings.embed_query(search_query)
+        
+        # NEW: Create filter for subject if provided
+        query_filter = None
+        if subject:
+            query_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="subject",
+                        match=MatchValue(value=subject)
+                    )
+                ]
+            )
+        
         result = qdrant_client.query_points(
             collection_name=collection_name,
             query=query_vector,
+            query_filter=query_filter,  # NEW: Apply subject filter
             limit=limit,
             with_payload=True,
             with_vectors=False,
@@ -398,9 +538,9 @@ SYSTEM_PROMPT = """أنت "مساعد تعليمي" ذكي وخبير. مهمت�
 -   **إذا كان أكاديمياً (الأولوية):**
     1.  **استنتج المادة:** من نص السؤال (ووصف الصورة)، **يجب عليك استنتاج** المادة الدراسية.
         -   المواد المتاحة: `['arabic', 'maths', 'english', 'science', 'social_studies']`.
-    2.  **كوّن اسم الكولكشن:** استخدم المادة المستنتجة + بيانات الطالب. (مثال: طالب بـ `grade: 5`, `term: 1` وسأل عن الرياضيات -> `maths_g5_t1`).
+    2.  **كوّن اسم الكولكشن:** استخدم المادة المستنتجة + بيانات الطالب. (مثال: طالب بـ `grade: 5`, `term: 1` وسأل عن الرياضيات -> `g5_t1`).
     3.  **كوّن سؤال البحث:** أعد صياغة سؤال الطالب (ووصف الصورة إن وجد) ليصبح `search_query` ممتاز.
-    4.  **استدعِ الأداة:** استدعِ `retrieve_documents` مع الـ `collection_name` والـ `search_query` الذين كونتهما.
+    4.  **استدعِ الأداة:** استدعِ `retrieve_documents` مع الـ `collection_name` والـ `search_query` والـ `subject` (المادة المستنتجة).
 -   **إذا كان عاماً (مثل "ما عاصمة فرنسا؟"):**
     -   انتقل مباشرة للخطوة 3.
 
@@ -528,6 +668,7 @@ def run_agentic_rag(
     student_meta: dict,
     image_base64: str | None = None,
     mode_flag: int = 0,
+    web_search_flag: int = 0,
 ):
     global CURRENT_IMAGE_BASE64
     
@@ -535,6 +676,11 @@ def run_agentic_rag(
     if not all([qdrant_client, embeddings, llm]):
         print("❌ لا يمكن التشغيل. واحد أو أكثر من الخدمات الأساسية (Qdrant, Embeddings, LLM) فشل في التهيئة.")
         return {"error": "الخدمات الأساسية غير جاهزة."}
+
+    # Auto-detect term if not provided
+    if "term" not in student_meta or not student_meta["term"]:
+        student_meta["term"] = get_current_term()
+        print(f"🗓️ تم تحديد الترم تلقائياً: الترم {student_meta['term']}")
 
     CURRENT_IMAGE_BASE64 = image_base64
 
@@ -552,7 +698,13 @@ def run_agentic_rag(
         CURRENT_IMAGE_BASE64 = image_base64
         print("🖼️ محاولة استخراج وصف للصورة قبل تشغيل الـ Agent...")
         image_data_url = _format_image_data(image_base64)
-        if image_data_url and openrouter_client:
+        
+        # Check Cache First
+        cached_desc = get_cached_description(image_base64)
+        if cached_desc:
+             print(f"   -> ✅ تم العثور على وصف الصورة في الكاش: {cached_desc[:50]}...")
+             image_description = cached_desc
+        elif image_data_url and openrouter_client:
             description_prompt = (
                 "أنت محلل يساعد في فهم الصور التعليمية.\n"
                 "أعطني وصفًا موجزًا باللغة العربية لما يظهر في الصورة، مع التركيز على الكلمات المفتاحية أو الرموز أو العناوين داخلها.\n"
@@ -563,14 +715,28 @@ def run_agentic_rag(
             if described and "خطأ" not in described:
                 image_description = described.strip()
                 print(f"   -> تم استخراج وصف مبدئي للصورة ({len(image_description)} حرف).")
+                # Save to Cache
+                cache_description(image_base64, image_description)
             else:
                 print("   -> تعذر استخراج وصف تلقائي للصورة، سيحاول الـ Agent استخدام الأداة.")
         else:
             print("   -> لا يمكن استدعاء نموذج الرؤية الآن، سيعتمد الـ Agent على الأدوات أثناء التنفيذ.")
 
     meta_str = json.dumps(student_meta, ensure_ascii=False)
+    
+    # Hybrid Search Logic
+    current_system_prompt = SYSTEM_PROMPT
+    if web_search_flag == 1:
+        current_system_prompt += """
+
+## ⚠️ تنبيه هام: وضع البحث على الويب مفعل ⚠️
+لقد قام المستخدم بتفعيل خيار "البحث على الويب".
+- إذا كان السؤال أكاديمياً: **يجب** عليك استخدام أداة `retrieve_documents` أولاً، **ثم** استخدام أداة `web_search` للحصول على معلومات إضافية. ادمج المعلومات من المصدرين.
+- إذا كان السؤال عاماً: استخدم `web_search` مباشرة.
+"""
+
     system_message = SystemMessage(
-        content=SYSTEM_PROMPT.format(
+        content=current_system_prompt.format(
             student_meta=meta_str,
             memory=memory_text or "لا توجد ذاكرة بعد.",
             image_description=image_description or "[لا يوجد وصف للصورة]",
@@ -611,8 +777,9 @@ def run_agentic_rag(
     print("=" * 50)
     
     # (5. تحديث الذاكرة)
-    print("💾 تحديث الذاكرة...")
-    new_summary = update_memory(memory_text, question, final_answer)
+    print("💾 تحديث الذاكرة (مع التلخيص الذكي)...")
+    summary_of_answer = summarize_for_memory(final_answer)
+    new_summary = update_memory(memory_text, question, summary_of_answer, image_description)
     save_student_memory(name, new_summary)
     CURRENT_IMAGE_BASE64 = None
     return final_state

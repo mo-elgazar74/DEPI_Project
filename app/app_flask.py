@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Dict, List
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file, Response
 from flask_cors import CORS
+import tempfile
+import groq
 
 from main import run_agentic_pipeline
 
@@ -22,8 +24,7 @@ LOG_FILE = LOG_DIR / "api_requests.log"
 
 app = Flask(__name__, template_folder="templates")
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
-CORS(app, origins=["https://edubot.art"])
-
+CORS(app)
 
 # ==========================================================
 # 🔹 Meta Data
@@ -184,12 +185,14 @@ def api_ask():
         })
 
     mode_flag = int(data.get("mode_flag", 0))
+    web_search_flag = int(data.get("web_search_flag", 0))
 
     try:
         result = run_agentic_pipeline(
             question=question,
             student_meta=student_meta,
             mode_flag=mode_flag,
+            web_search_flag=web_search_flag,
             image_base64=image_base64 or None,
         )
         state = result.get("state", {}) or {}
@@ -431,6 +434,135 @@ def api_chat_ask(chat_id: str):
         "student_meta": student_meta,
         "mode": result.get("mode"),
     })
+
+# ==========================================================
+# 🔹 TTS (Text-to-Speech) using Groq
+# ==========================================================
+@app.post("/api/tts")
+def api_tts():
+    """Convert text to speech using Groq's playai-tts-arabic model."""
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    voice = (data.get("voice") or "Nasser-PlayAI").strip()
+    stream = request.args.get("stream") == "1"
+    
+    if not text:
+        return jsonify({"status": "error", "message": "text field is required"}), 400
+    
+    # Get Groq API key
+    api_key = os.getenv("GROQ_TTS_STT_API_KEY") or os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return jsonify({"status": "error", "message": "Groq API key not configured"}), 500
+    
+    try:
+        # Create temporary file for audio
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
+            output_path = tmp_file.name
+        
+        # Generate TTS audio using Groq
+        client = groq.Groq(api_key=api_key)
+        with client.audio.speech.with_streaming_response.create(
+            model="playai-tts-arabic",  
+            voice=voice,
+            input=text,
+        ) as response:
+            with open(output_path, "wb") as f:
+                for chunk in response.iter_bytes():
+                    f.write(chunk)
+        
+        if stream:
+            # Stream the audio file
+            def generate():
+                with open(output_path, "rb") as f:
+                    while chunk := f.read(4096):
+                        yield chunk
+                # Clean up temp file after streaming
+                try:
+                    os.unlink(output_path)
+                except:
+                    pass
+            
+            return Response(generate(), mimetype="audio/mpeg", headers={
+                "Cache-Control": "no-store"
+            })
+        else:
+            # Return file and clean up
+            response = send_file(output_path, mimetype="audio/mpeg", as_attachment=False)
+            # Schedule cleanup
+            @response.call_on_close
+            def cleanup():
+                try:
+                    os.unlink(output_path)
+                except:
+                    pass
+            return response
+            
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": "Failed to process TTS request",
+            "details": str(exc)
+        }), 500
+
+# ==========================================================
+# 🔹 STT (Speech-to-Text) using Groq Whisper
+# ==========================================================
+@app.post("/api/stt")
+def api_stt():
+    """Convert speech to text using Groq's whisper-large-v3-turbo model."""
+    # Get Groq API key
+    api_key = os.getenv("GROQ_TTS_STT_API_KEY") or os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return jsonify({"status": "error", "message": "Groq API key not configured"}), 500
+    
+    # Check if audio file is in request
+    if 'audio' not in request.files:
+        return jsonify({"status": "error", "message": "audio file is required"}), 400
+    
+    audio_file = request.files['audio']
+    if audio_file.filename == '':
+        return jsonify({"status": "error", "message": "no audio file selected"}), 400
+    
+    try:
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_file.filename)[1]) as tmp_file:
+            audio_file.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        # Transcribe using Groq Whisper
+        client = groq.Groq(api_key=api_key)
+        with open(temp_path, "rb") as audio:
+            transcript = client.audio.transcriptions.create(
+                file=audio,
+                model="whisper-large-v3-turbo",
+                response_format="json",
+            )
+        
+        # Clean up temp file
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+        
+        return jsonify({
+            "status": "ok",
+            "text": transcript.text,
+            "language": getattr(transcript, 'language', 'unknown')
+        })
+            
+    except Exception as exc:
+        # Clean up temp file on error
+        try:
+            if 'temp_path' in locals():
+                os.unlink(temp_path)
+        except:
+            pass
+        
+        return jsonify({
+            "status": "error",
+            "message": "Failed to process STT request",
+            "details": str(exc)
+        }), 500
     
 # ==========================================================
 # 🔹 Deploy
