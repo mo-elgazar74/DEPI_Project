@@ -2,9 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/clerk-react";
 
-import config from "@/config"; 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
-const API_BASE = config.apiBase;
 export default function RequireProfile({ children }) {
   const { isLoaded, user } = useUser();
   const { getToken } = useAuth();

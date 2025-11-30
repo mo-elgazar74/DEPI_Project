@@ -11,42 +11,22 @@ import ragRouter from "./routes/rag.js";
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
-
-// ✅ تعديل هنا
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(",").map(origin => origin.trim()) ?? [
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(",") ?? [
   "http://localhost:5173",
 ];
-
-console.log("✅ Allowed Origins:", CLIENT_ORIGIN); // للتأكد
 
 if (!process.env.CLERK_SECRET_KEY) {
   throw new Error("Missing CLERK_SECRET_KEY in server/.env");
 }
 
-// ✅ CORS Configuration الصحيحة
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // السماح للـ requests بدون origin (مثل Postman أو Mobile Apps)
-      if (!origin) return callback(null, true);
-      
-      if (CLIENT_ORIGIN.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        console.error("❌ CORS blocked origin:", origin);
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    origin: CLIENT_ORIGIN,
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
-    optionsSuccessStatus: 200
   })
 );
-
-// ✅ Handle preflight requests
-app.options('*', cors());
-
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(clerkMiddleware());
@@ -56,18 +36,16 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.get("/api/protected", requireAuth(), (req, res) => {
   res.json({
-    message: "Protected route ✅ You are authorized",
+    message: "We are Happy to see you 😊",
     userId: req.auth.userId,
   });
 });
 
 app.get("/api/profile", requireAuth(), async (req, res) => {
   try {
-    const auth = getAuth(req);
-    console.log("AUTH OBJECT:", auth);
-    const userId = auth?.userId;
+    const { userId } = getAuth(req);
     if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).end();
     }
 
     const user = await clerkClient.users.getUser(userId);
@@ -81,11 +59,9 @@ app.get("/api/profile", requireAuth(), async (req, res) => {
 
 app.post("/api/profile", requireAuth(), async (req, res) => {
   try {
-    const auth = getAuth(req);
-    console.log("AUTH OBJECT:", auth);
-    const userId = auth?.userId;
+    const { userId } = getAuth(req);
     if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).end();
     }
 
     const { birthday, grade, role } = req.body || {};
@@ -149,9 +125,7 @@ app.post("/api/profile", requireAuth(), async (req, res) => {
 
 app.delete("/api/profile/delete", requireAuth(), async (req, res) => {
   try {
-    const auth = getAuth(req);
-    console.log("AUTH OBJECT:", auth);
-    const userId = auth?.userId;
+    const { userId } = getAuth(req);
     if (!userId) {
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
@@ -168,6 +142,6 @@ app.delete("/api/profile/delete", requireAuth(), async (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 API listening on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`🚀 API listening on http://localhost:${PORT}`);
 });

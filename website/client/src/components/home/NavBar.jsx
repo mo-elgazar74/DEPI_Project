@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useClerk, useUser } from "@clerk/clerk-react";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
-import { Laptop, Moon, Sun, Check, User, Menu, X } from "lucide-react";
+import { Laptop, Moon, Sun, Check, User, Menu, X, Globe } from "lucide-react";
 
 import logo from "@/public/logo.svg";
 import { Button } from "@/components/edubot/ui/button";
@@ -19,21 +19,24 @@ import {
   DropdownMenuSubContent,
 } from "@/components/edubot/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/edubot/ui/avatar";
-
-const NAV_LINKS = [
-  { label: "Home", href: "#hero" },
-  { label: "About", href: "#hero-content" },
-  { label: "Features", href: "#features" },
-  { label: "FAQ", href: "#faq" },
-  { label: "Download", href: "#download" },
-];
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function NavBar() {
   const navigate = useNavigate();
   const { user, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const { theme, setTheme } = useTheme();
+  const { t, language, toggleLanguage } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const NAV_LINKS = [
+    { label: t("nav.home"), href: "#hero" },
+    { label: t("nav.about"), href: "#hero-content" },
+    { label: t("nav.features"), href: "#features" },
+    { label: t("nav.whyUs"), href: "#why-us" },
+    { label: t("nav.upcoming"), href: "#upcoming" },
+    { label: t("nav.faq"), href: "#faq" },
+  ];
 
   const userInitials = useMemo(() => {
     if (!user) return "U";
@@ -62,23 +65,23 @@ export default function NavBar() {
       <DropdownMenuItem
         key={value}
         onClick={() => setTheme(value)}
-        className="flex items-center justify-between"
+        className="flex items-center justify-between focus:bg-white/20 focus:text-white"
       >
         <span className="flex items-center gap-2">
           <Icon className="h-4 w-4" />
           {label}
         </span>
-        {theme === value && <Check className="h-4 w-4 text-primary" />}
+        {theme === value && <Check className="h-4 w-4 text-white" />}
       </DropdownMenuItem>
     ));
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full bg-transparent text-white">
-      <div className="mx-auto w-full max-w-7xl px-4 py-4 md:px-6">
-        <div className="relative flex w-full flex-wrap items-center gap-4">
+      <div className="mx-auto w-full max-w-7xl px-2 sm:px-4 md:px-6 py-2 sm:py-3">
+        <div className="relative flex w-full items-center justify-between gap-2 sm:gap-4">
           {/* Left: logo + brand */}
           <motion.div
-            className="flex flex-shrink-0 items-center gap-3"
+            className="flex flex-shrink-0 items-center gap-2 sm:gap-3"
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -86,22 +89,22 @@ export default function NavBar() {
             <img
               src={logo}
               alt="EduBot logo"
-              className="h-10 w-10 rounded-full border border-white/40 object-cover"
+              className="h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full border border-white/40 object-cover"
             />
             <div className="leading-tight">
-              <p className="text-lg font-semibold">EduBot</p>
-              <p className="text-xs uppercase font-semibold tracking-[0.5em] text-white/70">Egypt</p>
+              <p className="text-sm sm:text-lg font-semibold">EduBot</p>
+              <p className="text-[0.6rem] sm:text-xs uppercase font-semibold tracking-[0.2em] sm:tracking-[0.5em] text-white/70">Egypt</p>
             </div>
           </motion.div>
 
           {/* Center: navigation links */}
-          <nav className="pointer-events-none hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-6 text-sm font-medium text-white/80">
+          <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-white/80">
             {NAV_LINKS.map(({ label, href, dir }) => (
               <a
                 key={href}
                 href={href}
                 dir={dir || "ltr"}
-                className="pointer-events-auto whitespace-nowrap rounded-full px-3 py-1 text-white/80 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/15 hover:text-white"
+                className="whitespace-nowrap rounded-full px-3 py-1 text-white/80 transition-all text-lg duration-200 hover:-translate-y-0.5 hover:bg-white/15 hover:text-white"
               >
                 {label}
               </a>
@@ -109,13 +112,23 @@ export default function NavBar() {
           </nav>
 
           {/* Right: CTA + user */}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full text-white hover:bg-white/10 px-2 sm:px-3"
+              onClick={toggleLanguage}
+            >
+              <Globe className="h-4 w-4 sm:h-5 sm:w-5 me-1" />
+              <span className="hidden sm:inline">{language === "en" ? "AR" : "EN"}</span>
+            </Button>
+
             <Button
               size="sm"
-              className="rounded-full border border-white/40 bg-white/5 px-5 text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/25 hover:text-white hover:shadow-lg"
+              className="hidden sm:flex rounded-full border border-white/40 bg-white/5 px-4 sm:px-5 text-sm text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/25 hover:text-white hover:shadow-lg"
               onClick={handleStartChatting}
             >
-              Start Chatting
+              {t("nav.startChatting")}
             </Button>
 
             {isSignedIn ? (
@@ -123,7 +136,7 @@ export default function NavBar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-2 rounded-full border border-white/30 bg-transparent px-2 py-1 pr-3 text-sm font-medium text-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/15 hover:text-white"
+                    className="flex items-center gap-2 rounded-full border border-white/30 bg-transparent px-2 py-1 pe-3 text-sm font-medium text-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/15 hover:text-white"
                   >
                     <Avatar className="h-8 w-8 border border-white/30">
                       <AvatarImage
@@ -135,38 +148,38 @@ export default function NavBar() {
                       </AvatarFallback>
                     </Avatar>
                     <span className="hidden sm:inline">
-                      {user?.firstName || "Account"}
+                      {user?.firstName || t("nav.account")}
                     </span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 bg-[#2C7A7B] text-white border-white/20">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
                       <span className="font-semibold">
-                        {user?.fullName || "User"}
+                        {user?.fullName || t("nav.account")}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        {user?.primaryEmailAddress?.emailAddress || "Account"}
+                      <span className="text-xs text-white/70">
+                        {user?.primaryEmailAddress?.emailAddress || t("nav.account")}
                       </span>
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile">Profile</Link>
+                  <DropdownMenuSeparator className="bg-white/20" />
+                  <DropdownMenuItem asChild className="focus:bg-white/20 focus:text-white">
+                    <Link to="/profile">{t("nav.profile")}</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/dashboard">Dashboard</Link>
+                  <DropdownMenuItem asChild className="focus:bg-white/20 focus:text-white">
+                    <Link to="/dashboard">{t("nav.dashboard")}</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-white/20" />
                   <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Theme</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-44">
+                    <DropdownMenuSubTrigger className="focus:bg-white/20 focus:text-white">{t("nav.theme")}</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-44 bg-[#2C7A7B] text-white border-white/20">
                       {renderThemeItems()}
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} variant="destructive">
-                    Sign out
+                  <DropdownMenuSeparator className="bg-white/20" />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-red-300 focus:bg-red-500/20 focus:text-red-200">
+                    {t("nav.signOut")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -177,7 +190,7 @@ export default function NavBar() {
                 onClick={() => navigate("/signin")}
               >
                 <User className="h-4 w-4" />
-                Account
+                {t("nav.account")}
               </button>
             )}
 
@@ -192,14 +205,14 @@ export default function NavBar() {
 
         {/* Mobile navigation */}
         {mobileMenuOpen && (
-          <div className="mt-4 border-t border-white/20 pb-4 lg:hidden">
-            <nav className="flex flex-col gap-3 pt-4">
+          <div className="mt-3 sm:mt-4 border-t border-white/20 pb-3 sm:pb-4 lg:hidden">
+            <nav className="flex flex-col gap-2 sm:gap-3 pt-3 sm:pt-4">
               {NAV_LINKS.map(({ label, href, dir }) => (
                 <a
                   key={href}
                   href={href}
                   dir={dir || "ltr"}
-                  className="rounded-full border border-white/10 py-2 px-4 text-white/90 transition-all duration-200 hover:border-white/40 hover:bg-white/10 hover:text-white"
+                  className="rounded-full border border-white/20 bg-white/90 py-3 px-4 text-gray-900 text-sm sm:text-md font-medium transition-all duration-200 hover:bg-white hover:scale-[1.02] min-h-[44px] flex items-center shadow-sm"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {label}

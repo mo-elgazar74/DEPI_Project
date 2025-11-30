@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/clerk-react";
+import { toast } from "sonner";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 
@@ -10,11 +11,7 @@ const roleOptions = [
   { value: "parent", label: "Parent" },
   { value: "teacher", label: "Teacher" },
 ];
-const API_BASE = import.meta.env.VITE_API_BASE;
-
-if (!API_BASE) {
-  console.error("VITE_API_BASE is missing!");
-}
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 const toIsoDate = (ddmmyyyy = "") => {
   const match = ddmmyyyy.match(/^(\d{2})-(\d{2})-(\d{4})$/);
@@ -40,14 +37,28 @@ export default function OnboardingPage() {
   const { isLoaded, user } = useUser();
   const { getToken } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [birthdayIso, setBirthdayIso] = useState("");
   const [grade, setGrade] = useState("g1");
   const [role, setRole] = useState("student");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const toastShownRef = useRef(false);
 
   const currentYear = useMemo(() => new Date().getFullYear(), []);
+
+  // Show toast if user was redirected here (only once)
+  useEffect(() => {
+    if (location.state?.from && !toastShownRef.current) {
+      console.log("Showing onboarding toast - user was redirected from:", location.state.from);
+      toast.info("Please complete your profile to continue", {
+        description: "We need a few details to personalize your experience.",
+        duration: 5000,
+      });
+      toastShownRef.current = true;
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (!isLoaded) {

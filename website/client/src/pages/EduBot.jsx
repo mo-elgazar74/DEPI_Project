@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { Brain, Headphones, Loader2, Mic, Plus, Square, Trash2, Volume2, VolumeX, Home, BookOpen, BarChart2, Search, Folder, LogOut, User as UserIcon, MessageSquare, Info, X, AlertCircle, MoreVertical } from "lucide-react";
+import { Brain, Headphones, Loader2, Mic, Plus, Square, Trash2, Volume2, VolumeX, Home, BookOpen, BarChart2, Search, Folder, LogOut, User as UserIcon, MessageSquare, Info, X, AlertCircle, MoreVertical, Globe, Share2, Copy, Edit, ThumbsUp, ThumbsDown, Menu, Settings } from "lucide-react";
 import { Button } from "@/components/edubot/ui/button";
 import { Textarea } from "@/components/edubot/ui/textarea";
 import { ScrollArea } from "@/components/edubot/ui/scroll-area";
@@ -9,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/edubot/ui/alert";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import logo from "@/public/logo.png"
 import background from "@/public/background.png"
 import VapiBridge from "@/components/edubot/VapiBridge";
@@ -19,12 +20,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
-import config from "@/config"; // ✅ استيراد
-
-const API_BASE = config.apiBase; 
-// const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
-
-console.log("🔍 API_BASE:", API_BASE);
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const GUEST_STATE_KEY = "edubot_guest_state_v1";
 const FREE_GUEST_LIMIT = 5;
 const HAS_VAPI = Boolean(
@@ -35,10 +31,6 @@ const ELEVENLABS_MODEL_ID_CLIENT = import.meta.env.VITE_ELEVENLABS_MODEL_ID || "
 const ELEVENLABS_LANGUAGE_CLIENT = import.meta.env.VITE_ELEVENLABS_LANGUAGE || "";
 
 const defaultGuestState = { chats: [], usage: 0 };
-const SpeechRecognitionClass =
-  typeof window !== "undefined"
-    ? window.SpeechRecognition || window.webkitSpeechRecognition
-    : null;
 const SPEECH_SYNTHESIS_SUPPORTED =
   typeof window !== "undefined" && typeof window.speechSynthesis !== "undefined";
 
@@ -91,6 +83,39 @@ const formatRelative = (value) => {
   }
 };
 
+// Coming Soon Button Component with Tooltip
+const ComingSoonButton = ({ children, className, isBottomNav = false }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  return (
+    <div className="relative">
+      <button 
+        className={className}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        {children}
+      </button>
+      {showTooltip && (
+        <div className={cn(
+          "absolute z-50 px-3 py-2 text-xs font-medium text-white bg-gray-900 rounded-lg shadow-lg whitespace-nowrap",
+          isBottomNav 
+            ? "bottom-full left-1/2 -translate-x-1/2 mb-2" 
+            : "left-full top-1/2 -translate-y-1/2 ml-2"
+        )}>
+          Coming Soon
+          <div className={cn(
+            "absolute w-2 h-2 bg-gray-900 rotate-45",
+            isBottomNav
+              ? "top-full left-1/2 -translate-x-1/2 -mt-1"
+              : "right-full top-1/2 -translate-y-1/2 mr-[-4px]"
+          )} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 const normalizeMessages = (messages = []) =>
   messages.map((msg, index) => ({
     id: msg.id || msg.message_id || `${msg.role}-${index}-${msg.ts || Date.now()}`,
@@ -135,8 +160,9 @@ const markdownComponents = {
 };
 
 export default function EduBotPage() {
-  const { user, isLoaded, isSignedIn } = useUser();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const navigate = useNavigate();
 
   const [chats, setChats] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
@@ -158,21 +184,25 @@ export default function EduBotPage() {
   const [openChatMenu, setOpenChatMenu] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuButtonRefs = useRef({});
-  const [useBrowserStt, setUseBrowserStt] = useState(false);
+  const [profile, setProfile] = useState(null);
   const [useAgenticMode, setUseAgenticMode] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [useWebSearch, setUseWebSearch] = useState(false);
+  const [showMobileOptions, setShowMobileOptions] = useState(false);
 
   const messagesEndRef = useRef(null);
   const playbackRef = useRef(null);
   const lastSpokenMessageRef = useRef("");
   const speechRecognitionRef = useRef(null);
+  const inputRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const isGuest = useMemo(() => isLoaded && !isSignedIn, [isLoaded, isSignedIn]);
   const isGuestLimitReached = isGuest && guestUsage >= FREE_GUEST_LIMIT;
-  const supportsSpeechRecognition = Boolean(SpeechRecognitionClass);
 
   const apiFetch = useCallback(
     async (path, options = {}, auth = false) => {
-      const { method = "GET", body, headers: extraHeaders = {} } = options;
+      const { method = "GET", body, headers: extraHeaders = {}, ...rest } = options;
       const headers = { "Content-Type": "application/json", ...extraHeaders };
 
       if (auth) {
@@ -188,6 +218,7 @@ export default function EduBotPage() {
         headers,
         body: body ? JSON.stringify(body) : undefined,
         credentials: "include",
+        ...rest,
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -210,20 +241,6 @@ export default function EduBotPage() {
     );
   }, []);
 
-  const stopSpeechRecognition = useCallback(() => {
-    const recognition = speechRecognitionRef.current;
-    if (recognition) {
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.onend = null;
-      try {
-        recognition.stop();
-      } catch (error) {
-        // ignore
-      }
-      speechRecognitionRef.current = null;
-    }
-  }, []);
 
   const playWithSpeechSynthesis = useCallback(async (text) => {
     if (!SPEECH_SYNTHESIS_SUPPORTED) {
@@ -338,13 +355,48 @@ export default function EduBotPage() {
       if (!text) return;
       try {
         stopPlayback();
-        await playWithSpeechSynthesis(text);
+        
+        console.log('🎙️ Requesting TTS for:', text.substring(0, 50));
+        
+        // Call the Groq TTS API
+        const response = await fetch(`${API_BASE}/api/rag/tts?stream=1`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        
+        console.log('📡 TTS Response status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('❌ TTS API error:', errorData);
+          throw new Error(errorData.message || 'TTS API failed');
+        }
+        
+        // Create audio from stream
+        const blob = await response.blob();
+        console.log('🎵 Audio blob size:', blob.size, 'bytes');
+        
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        playbackRef.current = audio;
+        
+        // Play the audio
+        console.log('▶️ Playing audio...');
+        await audio.play();
+        
+        // Clean up URL when done
+        audio.onended = () => {
+          console.log('✅ Audio playback finished');
+          URL.revokeObjectURL(audioUrl);
+        };
+        
       } catch (error) {
-        console.error("Speech synthesis failed", error);
-        setErrorMessage((prev) => prev || error.message || "تعذر تشغيل الصوت.");
+        console.error('❌ TTS failed:', error);
+        setErrorMessage((prev) => prev || error.message || 'تعذر تشغيل الصوت.');
       }
     },
-    [playWithSpeechSynthesis, stopPlayback]
+    [stopPlayback]
   );
 
   const playAssistantAudio = useCallback(
@@ -464,7 +516,7 @@ export default function EduBotPage() {
           appendGuestMessage(chatId, userMessage);
         }
 
-        const body = { question: trimmed, mode_flag: useAgenticMode ? 1 : 0 };
+        const body = { question: trimmed, mode_flag: useAgenticMode ? 1 : 0, web_search_flag: useWebSearch ? 1 : 0 };
 
         if (isSignedIn) {
           await apiFetch(
@@ -511,62 +563,131 @@ export default function EduBotPage() {
     [apiFetch, appendGuestMessage, ensureActiveChat, fetchChatDetail, isAutoSpeak, isSignedIn, playAssistantAudio, toast, useAgenticMode]
   );
 
-  const startSpeechRecognition = useCallback(() => {
-    if (!supportsSpeechRecognition) {
-      setRecordingError("التعرف على الصوت غير مدعوم في هذا المتصفح.");
-      return;
-    }
-    try {
-      stopSpeechRecognition();
-      const recognition = new SpeechRecognitionClass();
-      recognition.lang = ELEVENLABS_LANGUAGE_CLIENT || "ar-SA";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-      recognitionRef.current = recognition;
-      setIsRecording(true);
-      setInteractionMode("record");
-      setRecordingError("");
+  // MediaRecorder ref for Groq STT
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
-      recognition.onresult = async (event) => {
-        const transcript = event.results?.[0]?.[0]?.transcript || "";
-        await submitTranscribedQuestion(transcript);
+  const startGroqRecording = useCallback(async () => {
+    try {
+      // Request microphone access with better audio constraints
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          channelCount: 1,  // Mono audio
+          sampleRate: 16000,  // 16kHz is optimal for Whisper
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      // Create MediaRecorder with better settings
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: mimeType,
+        audioBitsPerSecond: 128000  // 128kbps for good quality
+      });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      // Collect audio chunks
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
-      recognition.onerror = (event) => {
-        setRecordingError(event.error || event.message || "تعذر التعرف على الصوت.");
-        setIsRecording(false);
-        setInteractionMode("text");
+      
+      // Handle recording stop
+      mediaRecorder.onstop = async () => {
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Create audio blob
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('🎤 Audio recorded, size:', audioBlob.size, 'bytes');
+        
+        // Send to Groq STT
+        try {
+          setLoadingMessage(true);
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+          
+          console.log('📤 Sending audio to Groq STT...');
+          const response = await fetch(`${API_BASE}/api/rag/stt`, {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (!response.ok) {
+            throw new Error('STT API failed');
+          }
+          
+          const result = await response.json();
+          console.log('✅ Transcription:', result.text);
+          
+          if (result.text) {
+            await submitTranscribedQuestion(result.text);
+          } else {
+            setRecordingError('لم يتم التعرف على أي نص من الصوت.');
+          }
+        } catch (error) {
+          console.error('❌ STT failed:', error);
+          setRecordingError(error.message || 'تعذر تحويل الصوت إلى نص.');
+        } finally {
+          setLoadingMessage(false);
+          setIsRecording(false);
+          setInteractionMode('text');
+        }
       };
-      recognition.onend = () => {
-        speechRecognitionRef.current = null;
-        setIsRecording(false);
-        setInteractionMode("text");
-      };
-      recognition.start();
+      
+      // Start recording
+      mediaRecorder.start();
+      setIsRecording(true);
+      setInteractionMode('record');
+      setRecordingError('');
+      console.log('🎙️ Recording started...');
+      
     } catch (error) {
-      console.error("Speech recognition failed", error);
-      setRecordingError(error.message || "تعذر بدء التعرف على الصوت.");
+      console.error('❌ Failed to start recording:', error);
+      setRecordingError(error.message || 'تعذر الوصول إلى الميكروفون.');
       setIsRecording(false);
-      setInteractionMode("text");
+      setInteractionMode('text');
     }
-  }, [submitTranscribedQuestion, supportsSpeechRecognition, stopSpeechRecognition]);
+  }, [submitTranscribedQuestion]);
+
+  const stopGroqRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      console.log('⏹️ Stopping recording...');
+      mediaRecorderRef.current.stop();
+    }
+  }, []);
+
+  const stopSpeechRecognition = useCallback(() => {
+    // Deprecated - kept for compatibility
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (error) {
+        // ignore
+      }
+      speechRecognitionRef.current = null;
+    }
+  }, []);
+
+  const startSpeechRecognition = useCallback(() => {
+    // Replaced with Groq STT
+    startGroqRecording();
+  }, [startGroqRecording]);
 
   const stopRecording = useCallback(() => {
+    stopGroqRecording();
     stopSpeechRecognition();
     setIsRecording(false);
     setInteractionMode((prev) => (prev === "record" ? "text" : prev));
-  }, [stopSpeechRecognition]);
-
-  const startRecording = useCallback(async () => {
-    if (isRecording) {
-      return;
-    }
-    if (!supportsSpeechRecognition) {
-      setRecordingError("التعرف على الصوت غير متاح على هذا المتصفح.");
-      return;
-    }
-    setUseBrowserStt(true);
-    startSpeechRecognition();
-  }, [isRecording, startSpeechRecognition, supportsSpeechRecognition]);
+  }, [stopGroqRecording, stopSpeechRecognition]);
 
   const handleRecordToggle = useCallback(() => {
     if (isRecording) {
@@ -574,16 +695,9 @@ export default function EduBotPage() {
       setInteractionMode("text");
       return;
     }
-    if (useBrowserStt || !supportsRecording) {
-      if (supportsSpeechRecognition) {
-        startSpeechRecognition();
-      } else {
-        setRecordingError("التعرف على الصوت غير متاح على هذا المتصفح.");
-      }
-      return;
-    }
-    startRecording();
-  }, [isRecording, startRecording, stopRecording, supportsRecording, supportsSpeechRecognition, useBrowserStt, startSpeechRecognition]);
+    // Always use Groq STT
+    startSpeechRecognition();
+  }, [isRecording, stopRecording, startSpeechRecognition]);
 
   const handleLiveToggle = useCallback(() => {
     if (!HAS_VAPI) {
@@ -609,6 +723,30 @@ export default function EduBotPage() {
     },
     [stopPlayback, stopRecording]
   );
+
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!isLoaded || !user) return;
+      try {
+        const token = await getToken();
+        if (!token) return;
+
+        const profileRes = await fetch(`${API_BASE}/api/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (profileRes.ok) {
+          const { profile: profileData } = await profileRes.json();
+          setProfile(profileData);
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+      }
+    };
+
+    fetchProfile();
+  }, [isLoaded, user, getToken]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -776,6 +914,15 @@ const handleDeleteChat = useCallback(async () => {
     setImagePreview("");
   };
 
+  const handleStopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setLoadingMessage(false);
+      toast.info("تم إيقاف التوليد");
+    }
+  }, []);
+
   const sendQuestion = useCallback(async () => {
     const trimmed = question.trim();
     const hasImage = Boolean(imageBase64);
@@ -825,7 +972,14 @@ const handleDeleteChat = useCallback(async () => {
       question: trimmed,
       ...(hasImage ? { image_base64: imageBase64 } : {}),
       mode_flag: useAgenticMode ? 1 : 0,
+      web_search_flag: useWebSearch ? 1 : 0,
     };
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       if (isSignedIn) {
@@ -834,6 +988,7 @@ const handleDeleteChat = useCallback(async () => {
           {
             method: "POST",
             body: requestBody,
+            signal: controller.signal,
           },
           true
         );
@@ -845,6 +1000,7 @@ const handleDeleteChat = useCallback(async () => {
           {
             method: "POST",
             body: requestBody,
+            signal: controller.signal,
           },
           false
         );
@@ -906,8 +1062,8 @@ const handleDeleteChat = useCallback(async () => {
     <>
       {/* Error Toast Notification */}
       {errorMessage && (
-        <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-right fade-in duration-300">
-          <div className="bg-white border-l-4 border-red-500 shadow-lg rounded-lg p-4 max-w-sm w-full flex items-start gap-3">
+        <div className="fixed top-4 sm:top-6 right-4 sm:right-6 z-50 animate-in slide-in-from-right fade-in duration-300 max-w-[calc(100vw-2rem)] sm:max-w-sm">
+          <div className="bg-white border-l-4 border-red-500 shadow-lg rounded-lg p-3 sm:p-4 w-full flex items-start gap-2 sm:gap-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
                 <AlertCircle className="w-5 h-5 text-red-600" />
@@ -929,8 +1085,8 @@ const handleDeleteChat = useCallback(async () => {
 
       {/* Guest Limit Toast Notification */}
       {isGuestLimitReached && (
-        <div className="fixed top-20 right-6 z-50 animate-in slide-in-from-right fade-in duration-300">
-          <div className="bg-white border-l-4 border-amber-500 shadow-lg rounded-lg p-4 max-w-sm w-full flex items-start gap-3">
+        <div className="fixed top-16 sm:top-20 right-4 sm:right-6 z-50 animate-in slide-in-from-right fade-in duration-300 max-w-[calc(100vw-2rem)] sm:max-w-sm">
+          <div className="bg-white border-l-4 border-amber-500 shadow-lg rounded-lg p-3 sm:p-4 w-full flex items-start gap-2 sm:gap-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
                 <AlertCircle className="w-5 h-5 text-amber-600" />
@@ -946,8 +1102,8 @@ const handleDeleteChat = useCallback(async () => {
 
       {/* Toast Notification */}
       {bannerMessage && (
-        <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-right fade-in duration-300">
-          <div className="bg-white border-l-4 border-blue-500 shadow-lg rounded-lg p-4 max-w-sm w-full flex items-start gap-3">
+        <div className="fixed top-4 sm:top-6 right-4 sm:right-6 z-50 animate-in slide-in-from-right fade-in duration-300 max-w-[calc(100vw-2rem)] sm:max-w-sm">
+          <div className="bg-white border-l-4 border-blue-500 shadow-lg rounded-lg p-3 sm:p-4 w-full flex items-start gap-2 sm:gap-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <Info className="w-5 h-5 text-blue-600" />
@@ -974,27 +1130,52 @@ const handleDeleteChat = useCallback(async () => {
         onStatusChange={handleLiveStatusChange}
         onFallback={handleLiveFallback}
       />
-      <div className="h-screen bg-[#f5f7fb] p-4 overflow-hidden">
-        <div className="flex h-full gap-4">
-        <aside className="w-64 h-full bg-[#eaf4fc] flex flex-col border border-blue-100 rounded-2xl shadow-sm">
+      <div className="h-screen bg-[#f5f7fb] p-2 sm:p-4 overflow-hidden">
+        <div className="flex h-full gap-2 sm:gap-4 relative">
+        {/* Mobile Overlay */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+        
+        <aside className={cn(
+          "w-64 h-full bg-[#eaf4fc] flex flex-col border border-blue-100 rounded-2xl shadow-sm transition-transform duration-300 ease-in-out z-50",
+          "md:relative md:translate-x-0",
+          isSidebarOpen ? "fixed left-2 top-2 bottom-2 translate-x-0" : "fixed -translate-x-full md:translate-x-0"
+        )}>
           {/* Sidebar Header */}
-          <div className="p-6 flex flex-col items-center border-b border-blue-100/50">
-            <div className="mb-4 text-center">
-                 <img src={logo} alt="EduBot" className="w-36 h-36  mx-auto flex items-center justify-center mb-1" />
-              <h1 className="text-xl font-bold text-blue-900">EduBot Egypt</h1>
-            </div>
+          <div className="p-4 sm:p-6 flex flex-col items-center border-b border-blue-100/50">
+            {/* Close button for mobile */}
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden absolute top-4 right-4 p-2 hover:bg-blue-100 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
             
-            <div className="w-full flex items-center gap-3 p-3 bg-white/50 rounded-xl border border-blue-100">
-              <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+            <button 
+              onClick={() => navigate("/")} 
+              className="mb-3 sm:mb-4 text-center cursor-pointer hover:opacity-80 transition-opacity"
+            >
+                 <img src={logo} alt="EduBot" className="w-28 h-28 sm:w-36 sm:h-36 mx-auto flex items-center justify-center mb-1" />
+              <h1 className="text-lg sm:text-xl font-bold text-blue-900">EduBot Egypt</h1>
+            </button>
+            
+            <div className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white/50 rounded-xl border border-blue-100">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
                 {user?.imageUrl ? (
                   <img src={user.imageUrl} alt={user.fullName} className="w-full h-full object-cover" />
                 ) : (
-                  <UserIcon className="w-6 h-6 m-2 text-gray-500" />
+                  <UserIcon className="w-5 h-5 sm:w-6 sm:h-6 m-1.5 sm:m-2 text-gray-500" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800 truncate">{user?.fullName || "Guest User"}</p>
-                <p className="text-xs text-gray-500">G2 / T1</p>
+                <p className="text-xs sm:text-sm font-bold text-gray-800 truncate">{user?.fullName || "Guest User"}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500">
+                  {profile ? `${String(profile.grade || "N/A").replace("g", "G")} / ${String(profile.role || "N/A").charAt(0).toUpperCase()}${String(profile.role || "N/A").slice(1).charAt(0)}` : "Loading..."}
+                </p>
               </div>
             </div>
           </div>
@@ -1005,14 +1186,14 @@ const handleDeleteChat = useCallback(async () => {
               <Plus className="w-5 h-5" />
               <span className="font-semibold">New Chat</span>
             </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-blue-50 rounded-xl transition-colors">
+            <ComingSoonButton className="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-blue-50 rounded-xl transition-colors">
               <Search className="w-5 h-5" />
               <span className="font-medium">Search Chat</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-blue-50 rounded-xl transition-colors">
+            </ComingSoonButton>
+            <ComingSoonButton className="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-blue-50 rounded-xl transition-colors">
               <Folder className="w-5 h-5" />
               <span className="font-medium">Projects</span>
-            </button>
+            </ComingSoonButton>
           </div>
 
           {/* Chat List */}
@@ -1072,20 +1253,37 @@ const handleDeleteChat = useCallback(async () => {
               <Home className="w-5 h-5" />
               <span className="text-[10px] font-medium">Home</span>
             </button>
-            <button className="flex flex-col items-center gap-1 p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
+            <ComingSoonButton 
+              className="flex flex-col items-center gap-1 p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg"
+              isBottomNav={true}
+            >
               <BookOpen className="w-5 h-5" />
               <span className="text-[10px] font-medium">Subject</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg">
+            </ComingSoonButton>
+            <ComingSoonButton 
+              className="flex flex-col items-center gap-1 p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg"
+              isBottomNav={true}
+            >
               <BarChart2 className="w-5 h-5" />
               <span className="text-[10px] font-medium">Progress</span>
-            </button>
+            </ComingSoonButton>
           </div>
         </aside>
 
         <section className="flex flex-1 flex-col h-full bg-white border border-blue-100 rounded-2xl shadow-sm overflow-hidden">
+          {/* Mobile Header with Menu Button */}
+          <div className="md:hidden flex items-center justify-between p-3 border-b border-blue-100 bg-white">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              <Menu className="w-5 h-5 text-gray-700" />
+            </button>
+            <h2 className="text-sm font-semibold text-gray-800">{activeChat?.title || "EduBot"}</h2>
+            <div className="w-9" /> {/* Spacer for centering */}
+          </div>
 
-          <main className="flex-1 overflow-y-auto px-6 bg-[#f8fbfe]" style={{ backgroundImage: `url(${background})` }}>
+          <main className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 bg-[#f8fbfe]" style={{ backgroundImage: `url(${background})` }}>
             <div className="max-w-4xl mx-auto pt-6">
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-[60vh] text-center opacity-50">
@@ -1098,13 +1296,13 @@ const handleDeleteChat = useCallback(async () => {
                     <div
                       key={msg.id}
                       className={cn(
-                        "flex w-full",
+                        "flex w-full group relative",
                         msg.role === "user" ? "justify-end" : "justify-start"
                       )}
                     >
                       <div
                         className={cn(
-                          "max-w-[80%] px-5 py-3 text-sm leading-relaxed shadow-sm relative",
+                          "max-w-[85%] sm:max-w-[80%] px-3 sm:px-4 md:px-5 py-2 sm:py-3 text-xs sm:text-sm leading-relaxed shadow-sm relative",
                           msg.role === "user"
                             ? "bg-[#8AB6F9] text-[#0F1C3F] rounded-t-2xl rounded-bl-2xl"
                             : "bg-[#e1effe] text-[#1e3a8a] rounded-t-2xl rounded-br-2xl"
@@ -1115,14 +1313,14 @@ const handleDeleteChat = useCallback(async () => {
                           <img
                             src={msg.imagePreview}
                             alt="صورة مرفقة"
-                            className="mb-2 max-h-48 rounded-lg object-contain bg-black/10"
+                            className="mb-2 max-h-32 sm:max-h-48 w-full rounded-lg object-contain bg-black/10"
                           />
                         )}
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeKatex]}
                           className={cn(
-                            "space-y-2 text-sm leading-relaxed",
+                            "space-y-2 text-xs sm:text-sm leading-relaxed",
                             msg.role === "user"
                               ? "text-[#0F1C3F] [&_strong]:text-[#0F1C3F]"
                               : "text-[#1e3a8a]"
@@ -1132,13 +1330,67 @@ const handleDeleteChat = useCallback(async () => {
                         </ReactMarkdown>
                         
                         {msg.role === "assistant" && !msg.content.startsWith("⚠️") && (
-                          <button
-                            type="button"
-                            onClick={() => playAssistantAudio(msg)}
-                            className="absolute -bottom-6 left-0 text-gray-400 hover:text-blue-600 transition-colors"
-                          >
-                            <Volume2 className="w-4 h-4" />
-                          </button>
+                          <div className="absolute -bottom-6 left-0 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => playAssistantAudio(msg)}
+                              className="text-gray-400 hover:text-blue-600 transition-colors"
+                              title="Listen"
+                            >
+                              <Volume2 className="w-4 h-4" />
+                            </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(msg.content);
+                                        toast.success("تم نسخ النص");
+                                    }} 
+                                    title="Copy" 
+                                    className="p-1.5 text-gray-400 hover:text-blue-600"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => toast.success("شكراً على ملاحظاتك!")} 
+                                    title="Good Response" 
+                                    className="p-1.5 text-gray-400 hover:text-green-600"
+                                >
+                                    <ThumbsUp className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => toast.success("شكراً على ملاحظاتك!")} 
+                                    title="Bad Response" 
+                                    className="p-1.5 text-gray-400 hover:text-red-600"
+                                >
+                                    <ThumbsDown className="w-4 h-4" />
+                                </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {msg.role === "user" && (
+                            <div className="absolute -bottom-5 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(msg.content);
+                                        toast.success("تم نسخ النص");
+                                    }} 
+                                    title="Copy" 
+                                    className="p-1.5 text-gray-400 hover:text-blue-600"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setQuestion(msg.content);
+                                        inputRef.current?.focus();
+                                    }} 
+                                    title="Edit" 
+                                    className="p-1.5 text-gray-400 hover:text-blue-600"
+                                >
+                                    <Edit className="w-4 h-4" />
+                                </button>
+                            </div>
                         )}
                       </div>
                     </div>
@@ -1158,9 +1410,10 @@ const handleDeleteChat = useCallback(async () => {
           </main>
 
           {/* Input Area - Sticky at bottom */}
-          <div className="px-6 pb-2 bg-[#f8fbfe]" style={{ backgroundBlendMode: "multiply" }}>
+          <div className="px-3 sm:px-4 md:px-6 pb-2 bg-[#f8fbfe]" style={{ backgroundBlendMode: "multiply" }}>
               <div className="relative flex flex-col border border-gray-200 rounded-xl shadow-sm" style={{backgroundBlendMode: "multiply"}}>
                   <textarea
+                    ref={inputRef}
                     dir="auto"
                     rows="1"
                     style={{ overflow: "hidden", outline: "none" }}
@@ -1169,7 +1422,7 @@ const handleDeleteChat = useCallback(async () => {
                       value={question}
                       onChange={(event) => setQuestion(event.target.value)}
                       onKeyDown={(event) => {
-                        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                        if (event.key === "Enter" && !event.shiftKey) {
                           event.preventDefault();
                           sendQuestion();
                         }
@@ -1194,9 +1447,9 @@ const handleDeleteChat = useCallback(async () => {
                     </div>
                   )}
 
-                  <div className="h-10">
-                    <div className="absolute left-3 right-3 bottom-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                  <div className="h-10 sm:h-10">
+                    <div className="absolute left-2 right-2 sm:left-3 sm:right-3 bottom-2 sm:bottom-3 flex items-center justify-between gap-1 sm:gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                         {/* File Attachment */}
                         <label className={cn("cursor-pointer", isGuestLimitReached && "opacity-50 cursor-not-allowed")}>
                           <input
@@ -1207,11 +1460,12 @@ const handleDeleteChat = useCallback(async () => {
                             disabled={loadingMessage || isGuestLimitReached}
                           />
                           <div
-                            className="p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50"
+                            className="p-1.5 sm:p-2 text-gray-400 hover:text-blue-600 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50"
                             aria-label="Attach file"
+                            title="Attach file"
                           >
                             <svg
-                              className="w-4 h-4"
+                              className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                               strokeLinejoin="round"
                               strokeLinecap="round"
                               strokeWidth="2"
@@ -1232,14 +1486,14 @@ const handleDeleteChat = useCallback(async () => {
                           <button
                             type="button"
                             className={cn(
-                              "p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50",
+                              "p-1.5 sm:p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50",
                               isRecording ? "text-red-500 border-red-500/50 bg-red-500/10" : "text-gray-400 hover:text-blue-600"
                             )}
                             onClick={handleRecordToggle}
                             disabled={loadingMessage || isGuestLimitReached}
-                            title={isRecording ? "إيقاف التسجيل" : "تسجيل صوتي"}
+                            title={isRecording ? "Stop Recording" : "Voice Recording"}
                           >
-                            {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Mic className="w-4 h-4" />}
+                            {isRecording ? <Square className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> : <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                           </button>
                         )}
 
@@ -1248,7 +1502,7 @@ const handleDeleteChat = useCallback(async () => {
                           <button
                             type="button"
                             className={cn(
-                              "p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50",
+                              "p-1.5 sm:p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50",
                               (interactionMode === "live" || liveStatus === "active") 
                                 ? "text-emerald-500 border-emerald-500/50 bg-emerald-500/10" 
                                 : "text-gray-400 hover:text-blue-600",
@@ -1258,50 +1512,141 @@ const handleDeleteChat = useCallback(async () => {
                             disabled={loadingMessage || isGuestLimitReached}
                             title="مكالمة مباشرة"
                           >
-                            <Headphones className="w-4 h-4" />
+                            <Headphones className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         )}
 
-                        {/* Auto Speak */}
+                        {/* Auto Speak - Desktop */}
                         <button
                           type="button"
                           className={cn(
-                            "p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50",
+                            "p-1.5 sm:p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50 hidden sm:flex",
                             isAutoSpeak ? "text-blue-500 border-blue-500/50 bg-blue-500/10" : "text-gray-400 hover:text-blue-600"
                           )}
                           onClick={() => setIsAutoSpeak((prev) => !prev)}
-                          title="القراءة التلقائية"
+                          title="Auto Speak (Read Aloud)"
                         >
-                          {isAutoSpeak ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                          {isAutoSpeak ? <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                         </button>
 
-                        {/* Agentic Mode */}
+                        {/* Agentic Mode - Desktop */}
                         <button
                           type="button"
                           className={cn(
-                            "p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50",
+                            "p-1.5 sm:p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50 hidden sm:flex",
                             useAgenticMode ? "text-purple-500 border-purple-500/50 bg-purple-500/10" : "text-gray-400 hover:text-blue-600"
                           )}
                           onClick={() => setUseAgenticMode((prev) => !prev)}
-                          title="وضع التفكير العميق"
+                          title="Deep Thinking Mode"
                         >
-                          <Brain className="w-4 h-4" />
+                          <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
+
+                        {/* Web Search Mode - Desktop */}
+                        <button
+                          type="button"
+                          className={cn(
+                            "p-1.5 sm:p-2 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50 hidden sm:flex",
+                            useWebSearch ? "text-green-500 border-green-500/50 bg-green-500/10" : "text-gray-400 hover:text-blue-600"
+                          )}
+                          onClick={() => {
+                            setUseWebSearch((prev) => {
+                              const newValue = !prev;
+                              if (newValue) {
+                                setUseAgenticMode(true);
+                              }
+                              return newValue;
+                            });
+                          }}
+                          title=" Web Search (Auto-enable Deep Thinking mode) "
+                        >
+                          <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </button>
+
+                        {/* Mobile Options Menu */}
+                        <div className="relative sm:hidden">
+                          <button
+                            type="button"
+                            className={cn(
+                              "p-1.5 transition-colors rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50",
+                              (isAutoSpeak || useAgenticMode || useWebSearch) ? "text-blue-500 border-blue-500/50 bg-blue-500/10" : "text-gray-400 hover:text-blue-600"
+                            )}
+                            onClick={() => setShowMobileOptions(!showMobileOptions)}
+                            title="More Options"
+                          >
+                            <Settings className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Dropdown Menu */}
+                          {showMobileOptions && (
+                            <>
+                              <div 
+                                className="fixed inset-0 z-40" 
+                                onClick={() => setShowMobileOptions(false)}
+                              />
+                              <div className="absolute bottom-full left-0 mb-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
+                                <button
+                                  onClick={() => {
+                                    setIsAutoSpeak((prev) => !prev);
+                                    setShowMobileOptions(false);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors"
+                                >
+                                  {isAutoSpeak ? <Volume2 className="w-4 h-4 text-blue-500" /> : <VolumeX className="w-4 h-4 text-gray-400" />}
+                                  <span className={isAutoSpeak ? "text-blue-600 font-medium" : "text-gray-700"}>Auto Speak</span>
+                                  {isAutoSpeak && <div className="ml-auto w-2 h-2 rounded-full bg-blue-500" />}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setUseAgenticMode((prev) => !prev);
+                                    setShowMobileOptions(false);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors"
+                                >
+                                  <Brain className={cn("w-4 h-4", useAgenticMode ? "text-purple-500" : "text-gray-400")} />
+                                  <span className={useAgenticMode ? "text-purple-600 font-medium" : "text-gray-700"}>Deep Thinking</span>
+                                  {useAgenticMode && <div className="ml-auto w-2 h-2 rounded-full bg-purple-500" />}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setUseWebSearch((prev) => {
+                                      const newValue = !prev;
+                                      if (newValue) {
+                                        setUseAgenticMode(true);
+                                      }
+                                      return newValue;
+                                    });
+                                    setShowMobileOptions(false);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors"
+                                >
+                                  <Globe className={cn("w-4 h-4", useWebSearch ? "text-green-500" : "text-gray-400")} />
+                                  <span className={useWebSearch ? "text-green-600 font-medium" : "text-gray-700"}>Web Search</span>
+                                  {useWebSearch && <div className="ml-auto w-2 h-2 rounded-full bg-green-500" />}
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
 
                       {/* Send Button */}
                       <button
                         className={cn(
                           "p-2 transition-colors text-blue-500 hover:text-blue-600",
-                          (!question.trim() && !imageBase64) || loadingMessage || isGuestLimitReached ? "opacity-50 cursor-not-allowed" : ""
+                          ((!question.trim() && !imageBase64 && !loadingMessage) || isGuestLimitReached) ? "opacity-50 cursor-not-allowed" : ""
                         )}
-                        aria-label="Send message"
+                        aria-label={loadingMessage ? "Stop generation" : "Send message"}
                         type="button"
-                        onClick={sendQuestion}
-                        disabled={(!question.trim() && !imageBase64) || loadingMessage || isGuestLimitReached}
+                        onClick={loadingMessage ? handleStopGeneration : sendQuestion}
+                        disabled={(!question.trim() && !imageBase64 && !loadingMessage) || isGuestLimitReached}
+                        title={loadingMessage ? "Stop generation" : "Send message"}
                       >
                         {loadingMessage ? (
-                          <Loader2 className="w-6 h-6 animate-spin" />
+                          <div className="relative flex items-center justify-center w-6 h-6">
+                            <Loader2 className="absolute w-full h-full animate-spin text-blue-200" />
+                            <Square className="absolute w-2.5 h-2.5 fill-current text-blue-600" />
+                          </div>
                         ) : (
                           <svg
                             className="w-6 h-6"
@@ -1351,6 +1696,19 @@ const handleDeleteChat = useCallback(async () => {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="bg-white shadow-2xl border border-gray-200 rounded-xl py-2 min-w-[190px]">
+            <button
+              onClick={() => {
+                const id = openChatMenu;
+                const link = `${window.location.origin}/edubot?chatId=${id}`;
+                navigator.clipboard.writeText(link);
+                toast.success("تم نسخ رابط المحادثة");
+                setOpenChatMenu(null);
+              }}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>مشاركة المحادثة</span>
+            </button>
             <button
               onClick={() => {
                 const id = openChatMenu;

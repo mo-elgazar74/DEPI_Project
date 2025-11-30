@@ -103,9 +103,10 @@ const PROVIDER_LABELS = {
   facebook: "Facebook",
 };
 
-import config from "@/config";
 
-const API_BASE = config.apiBase;
+const rawApiBase = import.meta.env.VITE_API_BASE?.trim() || "";
+const API_BASE = rawApiBase ? rawApiBase.replace(/\/$/, "") : "http://localhost:4000";
+
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser();
@@ -131,6 +132,8 @@ export default function ProfilePage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [profile, setProfile] = useState(null);
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
 
   useEffect(() => {
     if (!user || !isLoaded) return;
@@ -146,6 +149,29 @@ export default function ProfilePage() {
     );
     setAvatarPreview("");
   }, [user, isLoaded, profileVersion]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!isLoaded || !user) return;
+      try {
+        const token = await getToken();
+        if (!token) return;
+
+        const profileRes = await fetch(`${API_BASE}/api/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (profileRes.ok) {
+          const { profile: profileData } = await profileRes.json();
+          setProfile(profileData);
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+      }
+    };
+
+    fetchProfile();
+  }, [isLoaded, user, getToken, profileVersion]);
 
   useEffect(() => {
     return () => {
@@ -316,11 +342,13 @@ export default function ProfilePage() {
   const handleConnectProvider = async (provider) => {
     setConnectBusy(provider);
     try {
+      console.log(`Attempting to connect ${provider}...`);
       const externalAccount = await user.createExternalAccount({
         strategy: `oauth_${provider}`,
         redirectUrl: `${window.location.origin}/sso-callback`,
         redirectUrlComplete: `${window.location.origin}/profile`,
       });
+      console.log("External account created:", externalAccount);
       const verification =
         externalAccount?.firstFactorVerification ||
         externalAccount?.verification ||
@@ -331,18 +359,24 @@ export default function ProfilePage() {
         verification?.external_verification_redirect_url ||
         verification?.url;
       if (redirectUrl) {
-        toast.info("سيتم إعادة توجيهك لمقدم الخدمة لإكمال الربط.");
+        toast.info(`Redirecting to ${provider} for authentication...`);
         window.location.href = redirectUrl;
       } else {
         await refreshUser();
-        toast.success("تم ربط الحساب الخارجي.");
+        toast.success("Account connected successfully!");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error connecting provider:", err);
+      console.error("Error details:", {
+        errors: err?.errors,
+        message: err?.message,
+        clerkError: err?.clerkError,
+      });
       const message =
         err?.errors?.[0]?.longMessage ||
+        err?.errors?.[0]?.message ||
         err?.message ||
-        "تعذر الاتصال بالحساب الخارجي.";
+        `Unable to connect ${provider}. Please make sure ${provider} OAuth is enabled in your Clerk dashboard.`;
       toast.error(message);
     } finally {
       setConnectBusy("");
@@ -393,6 +427,60 @@ export default function ProfilePage() {
       ...prev,
       [key]: formatMetadataValue(user.privateMetadata?.[key]),
     }));
+  };
+
+  const handleSaveMetadata = async () => {
+    setIsSaving(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Missing session token");
+      }
+
+      // Convert ISO date to DD-MM-YYYY format if birthday was edited
+      let birthday = profile.birthday;
+      if (metadataDraft.birthdayIso) {
+        const [yyyy, mm, dd] = metadataDraft.birthdayIso.split("-");
+        birthday = `${dd}-${mm}-${yyyy}`;
+      }
+
+      const response = await fetch(`${API_BASE}/api/profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          birthday,
+          grade: metadataDraft.grade ?? profile.grade,
+          role: metadataDraft.role ?? profile.role,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to save changes.");
+      }
+
+      // Refresh profile data
+      const profileRes = await fetch(`${API_BASE}/api/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (profileRes.ok) {
+        const { profile: profileData } = await profileRes.json();
+        setProfile(profileData);
+      }
+
+      await refreshUser();
+      setMetadataDraft({});
+      setIsEditingMetadata(false);
+      toast.success("Academic profile updated successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || "Unable to save changes.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -472,23 +560,23 @@ export default function ProfilePage() {
   );
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">User Profile</h1>
-        <Button variant="outline" onClick={() => navigate("/")}>
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+        <h1 className="text-xl sm:text-2xl font-bold">User Profile</h1>
+          <Button variant="outline" onClick={() => navigate("/")} className="w-full sm:w-auto">
           ← Back to Home
-        </Button>
+          </Button>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="flex w-full flex-wrap">
-          <TabsTrigger value="profile" className="flex-1 sm:flex-none">
+        <TabsList className="flex w-full flex-wrap gap-1">
+          <TabsTrigger value="profile" className="flex-1 min-w-[100px] sm:flex-none">
             Profile
           </TabsTrigger>
-          <TabsTrigger value="security" className="flex-1 sm:flex-none">
+          <TabsTrigger value="security" className="flex-1 min-w-[100px] sm:flex-none">
             Security
           </TabsTrigger>
-          <TabsTrigger value="danger" className="flex-1 sm:flex-none">
+          <TabsTrigger value="danger" className="flex-1 min-w-[100px] sm:flex-none">
             Danger
           </TabsTrigger>
         </TabsList>
@@ -498,25 +586,28 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle>Profile Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 sm:space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-20 w-20">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
                     <AvatarImage src={avatarSrc} />
                     <AvatarFallback>
                       {user.firstName?.[0] || user.username?.[0] || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="text-sm text-muted-foreground">
-                    <p className="font-medium">{primaryEmail}</p>
-                    <p>User since {createdAt}</p>
+                  <div className="flex flex-col gap-2 text-center sm:text-left">
+                    <p className="text-sm font-medium text-muted-foreground">{primaryEmail}</p>
+                    <div className="inline-flex w-fit rounded-full bg-muted px-3 py-1 text-xs mx-auto sm:mx-0">
+                      User since {createdAt}
+                    </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-center sm:justify-start">
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     variant="outline"
                     disabled={photoUploading}
+                    className="flex-1 sm:flex-none"
                   >
                     {photoUploading ? "Uploading…" : "Change Photo"}
                   </Button>
@@ -555,8 +646,10 @@ export default function ProfilePage() {
                     <span className="break-all font-medium">{primaryEmail}</span>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">User Since</span>
-                    <span className="font-medium">{createdAt}</span>
+                    <span className="text-muted-foreground">Last Sign In</span>
+                    <span className="font-medium">
+                      {user.lastSignInAt ? format(new Date(user.lastSignInAt), "PPp") : "N/A"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -570,221 +663,147 @@ export default function ProfilePage() {
               <Separator />
 
               <div className="space-y-4">
-                <div>
-                  <h3 className="mb-2 font-semibold">Email Addresses</h3>
-                  <div className="space-y-3">
-                    {emailAddresses.map((email) => {
-                      const isPrimary = email.id === primaryEmailId;
-                      const status = email.verification?.status || "unverified";
-                      const isVerified = status === "verified";
-                      return (
-                        <div
-                          key={email.id}
-                          className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div>
-                            <p className="break-all font-medium">
-                              {email.emailAddress}
-                            </p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                              <Badge variant="secondary">
-                                {isPrimary ? "Primary" : "Secondary"}
-                              </Badge>
-                              <Badge variant={isVerified ? "default" : "outline"}>
-                                {isVerified ? "Verified" : "Unverified"}
-                              </Badge>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {!isPrimary && (
-                              <Button
-                                size="sm"
-                                disabled={emailAction === `${email.id}:primary`}
-                                onClick={() => handleSetPrimaryEmail(email.id)}
-                              >
-                                {emailAction === `${email.id}:primary`
-                                  ? "Setting..."
-                                  : "Set Primary"}
-                              </Button>
-                            )}
-                            {!isVerified && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={emailAction === `${email.id}:verify`}
-                                onClick={() => handleResendVerification(email.id)}
-                              >
-                                {emailAction === `${email.id}:verify`
-                                  ? "Sending..."
-                                  : "Resend Verification"}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                <h3 className="font-semibold">Academic Profile</h3>
+                <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Role</p>
+                    <p className="text-lg font-semibold capitalize">
+                      {profile?.role || "N/A"}
+                    </p>
                   </div>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input
-                    placeholder="Enter new email"
-                    value={newEmail}
-                    onChange={(event) => setNewEmail(event.target.value)}
-                    className="sm:max-w-sm"
-                  />
-                  <Button onClick={handleAddEmail} disabled={addingEmail}>
-                    {addingEmail ? "Adding..." : "Add Email"}
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <h3 className="font-semibold">Connected Accounts</h3>
-                <div className="space-y-2">
-                  {(externalAccounts || []).length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      لا توجد حسابات خارجية مرتبطة.
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Grade</p>
+                    <p className="text-lg font-semibold capitalize">
+                      {String(profile?.grade || "N/A").replace("g", "Grade ")}
                     </p>
-                  ) : (
-                    (externalAccounts || []).map((account) => {
-                      const providerLabel = getProviderLabel(account.provider);
-                      return (
-                        <div
-                          key={account.id}
-                          className="flex items-center justify-between rounded-lg border px-3 py-2"
-                        >
-                          <div>
-                            <p className="text-sm font-medium capitalize">
-                              {providerLabel}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {extractAccountLabel(account)}
-                            </p>
-                          </div>
-                          <AlertDialog
-                            onOpenChange={(open) => {
-                              if (!open) {
-                                setDisconnectBusy("");
-                              }
-                            }}
-                          >
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={Boolean(disconnectBusy)}
-                              >
-                                {disconnectBusy === account.id
-                                  ? "Disconnecting..."
-                                  : "Disconnect"}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>فصل حساب خارجي</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  سيتم فصل حساب {providerLabel} المرتبط بالمستخدم. يمكنك إعادة الربط لاحقًا.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel
-                                  onClick={() => setDisconnectBusy("")}
-                                  disabled={disconnectBusy === account.id}
-                                >
-                                  إلغاء
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  disabled={disconnectBusy === account.id}
-                                  onClick={async (event) => {
-                                    event.preventDefault();
-                                    await handleDisconnectProvider(account.id);
-                                  }}
-                                >
-                                  تأكيد الفصل
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {providersToOffer.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      تم ربط جميع مقدمي الخدمة المتاحة.
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Birthday</p>
+                    <p className="text-lg font-semibold">
+                      {profile?.birthday || "N/A"}
                     </p>
-                  ) : (
-                    providersToOffer.map((provider) => (
-                      <Button
-                        key={provider}
-                        variant="outline"
-                        disabled={connectBusy === provider}
-                        onClick={() => handleConnectProvider(provider)}
-                      >
-                        {connectBusy === provider
-                          ? "Connecting..."
-                          : `ربط حساب ${getProviderLabel(provider)}`}
-                      </Button>
-                    ))
-                  )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Birth Year</p>
+                    <p className="text-lg font-semibold">
+                      {profile?.birthYear || "N/A"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="font-semibold">Private Metadata</h3>
-                {metadataKeys.length === 0 ? (
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Metadata Profile</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditingMetadata(!isEditingMetadata)}
+                  >
+                    {isEditingMetadata ? "Cancel" : "Edit"}
+                  </Button>
+                </div>
+                {!profile || Object.keys(profile || {}).length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    لا توجد بيانات خاصة محفوظة لهذا المستخدم.
+                    No academic data available.
                   </p>
                 ) : (
-                  <div className="space-y-3">
-                    {metadataKeys.map((key) => (
-                      <div
-                        key={key}
-                        className="rounded-lg border bg-muted/20 p-3"
-                      >
-                        <Label className="text-xs uppercase text-muted-foreground">
-                          {key}
-                        </Label>
-                        <Input
-                          className="mt-2"
-                          value={metadataDraft[key] ?? ""}
-                          placeholder="القيمة غير محددة"
-                          onChange={(event) =>
+                  <div className="space-y-4 rounded-lg border p-4">
+                    {/* Role */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Role</Label>
+                      {isEditingMetadata ? (
+                        <select
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          value={metadataDraft.role ?? profile.role ?? "student"}
+                          onChange={(e) =>
                             setMetadataDraft((prev) => ({
                               ...prev,
-                              [key]: event.target.value,
+                              role: e.target.value,
                             }))
                           }
-                        />
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          اترك الحقل فارغًا ثم احفظ لحذف هذا المفتاح.
+                        >
+                          <option value="student">Student</option>
+                          <option value="parent">Parent</option>
+                          <option value="teacher">Teacher</option>
+                        </select>
+                      ) : (
+                        <p className="text-sm capitalize">{profile.role || "N/A"}</p>
+                      )}
+                    </div>
+
+                    {/* Grade */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Grade</Label>
+                      {isEditingMetadata ? (
+                        <select
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          value={metadataDraft.grade ?? profile.grade ?? "g1"}
+                          onChange={(e) =>
+                            setMetadataDraft((prev) => ({
+                              ...prev,
+                              grade: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="g1">Grade 1</option>
+                          <option value="g2">Grade 2</option>
+                          <option value="g3">Grade 3</option>
+                          <option value="g4">Grade 4</option>
+                          <option value="g5">Grade 5</option>
+                          <option value="g6">Grade 6</option>
+                        </select>
+                      ) : (
+                        <p className="text-sm capitalize">
+                          {String(profile.grade || "N/A").replace("g", "Grade ")}
                         </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleUpdateMetadata(key)}
-                            disabled={metadataSavingKey === key}
-                          >
-                            {metadataSavingKey === key ? "Saving..." : "حفظ التغيير"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={metadataSavingKey === key}
-                            onClick={() => handleResetMetadataValue(key)}
-                          >
-                            إعادة التعيين
-                          </Button>
-                        </div>
+                      )}
+                    </div>
+
+                    {/* Birthday */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Birthday</Label>
+                      {isEditingMetadata ? (
+                        <Input
+                          type="date"
+                          value={metadataDraft.birthdayIso ?? ""}
+                          onChange={(e) =>
+                            setMetadataDraft((prev) => ({
+                              ...prev,
+                              birthdayIso: e.target.value,
+                            }))
+                          }
+                          max={`${new Date().getFullYear()}-12-31`}
+                        />
+                      ) : (
+                        <p className="text-sm">{profile.birthday || "N/A"}</p>
+                      )}
+                    </div>
+
+                    {/* Birth Year */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Birth Year</Label>
+                      <p className="text-sm">{profile.birthYear || "N/A"}</p>
+                    </div>
+
+                    {isEditingMetadata && (
+                      <div className="flex gap-2 pt-2">
+                        <Button onClick={handleSaveMetadata} disabled={isSaving}>
+                          {isSaving ? "Saving..." : "Save Changes"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setMetadataDraft({});
+                            setIsEditingMetadata(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </div>
@@ -830,9 +849,9 @@ export default function ProfilePage() {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>تأكيد حذف الحساب</AlertDialogTitle>
+                    <AlertDialogTitle> Delete Account Verification </AlertDialogTitle>
                     <AlertDialogDescription>
-                      سيتم حذف حسابك وجميع بياناته بشكل نهائي. هذا الإجراء لا يمكن التراجع عنه.
+                      This action will permanently delete your account and all associated data. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   {deleteError && (
@@ -841,7 +860,7 @@ export default function ProfilePage() {
                     </p>
                   )}
                   <AlertDialogFooter>
-                    <AlertDialogCancel disabled={deleteBusy}>إلغاء</AlertDialogCancel>
+                    <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       disabled={deleteBusy}
                       onClick={async () => {

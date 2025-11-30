@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/", (req, res) => {
   res.json({
-    message: "Protected route ✅ You are authorized",
+    message: "We are Happy to see you 😊",
     userId: req.auth.userId,
   });
 });

@@ -5,10 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import videoSrc from "@/public/Last_Robot_Video_4k.mp4";
 import { useEffect, useState, useRef } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function Hero() {
   const navigate = useNavigate();
   const { isSignedIn } = useUser();
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const heroRef = useRef(null);
 
@@ -81,7 +83,7 @@ export default function Hero() {
       <section
         id="hero-content"
         ref={heroRef}
-        className={`flex min-h-screen items-center justify-center px-6 py-20 scroll-mt-32`}
+        className={`flex min-h-screen items-center justify-center px-4 sm:px-6 py-12 sm:py-20 overflow-x-clip`}
         style={{
           opacity: mounted ? 1 : 0,
           transform: mounted ? "translateY(0) scale(1)" : "translateY(3rem) scale(0.96)",
@@ -90,39 +92,35 @@ export default function Hero() {
             "opacity 600ms cubic-bezier(.22,.9,.31,1), transform 600ms cubic-bezier(.22,.9,.31,1), filter 600ms ease",
         }}
       >
-        <div className="grid w-full max-w-7xl items-center gap-12 lg:grid-cols-2 lg:gap-20">
-          <div className="space-y-8 text-center lg:text-left">
-            <div className="space-y-4">
-              <h1 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
-                The Smartest AI Assistant{" "}
-                <span className="bg-gradient-to-r from-primary to-chart-2 bg-clip-text text-transparent">
-                  Ready to Chat!
-                </span>
+        <div className="grid w-full max-w-7xl items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-20">
+          <div className="space-y-6 sm:space-y-8 text-center lg:text-start">
+            <div className="space-y-3 sm:space-y-4">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+                {t("hero.headline")}
               </h1>
-              <p className="mx-auto max-w-2xl text-lg text-muted-foreground md:text-xl lg:mx-0">
-                Get instant answers, learn new concepts, and explore the world of knowledge with our AI-powered
-                educational companion. Available 24/7 to help you succeed.
+              <p className="mx-auto max-w-2xl text-base sm:text-lg md:text-xl text-muted-foreground lg:mx-0">
+                {t("hero.subheadline")}
               </p>
             </div>
 
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
+            <div className="flex flex-col items-center gap-3 sm:gap-4 sm:flex-row sm:justify-center lg:justify-start">
               <Button
                 size="lg"
-                className="px-8 text-base"
+                className="w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base"
                 onClick={handleStartChatting}
                 data-testid="button-start-chatting-2"
               >
-                Start Chatting
+                {t("hero.startChatting")}
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="px-8 text-base"
+                className="w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base"
                 onClick={handleWatchDemo}
                 data-testid="button-watch-demo-2"
               >
-                <Play className="mr-2 h-5 w-5" />
-                Watch Demo
+                <Play className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                {t("hero.learnMore")}
               </Button>
             </div>
           </div>

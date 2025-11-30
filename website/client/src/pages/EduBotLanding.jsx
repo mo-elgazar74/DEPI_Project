@@ -6,6 +6,8 @@ import Features from "@/components/home/Features";
 import Footer from "@/components/home/Footer";
 import Hero from "@/components/home/Hero";
 import NavBar from "@/components/home/NavBar";
+import WhyUs from "@/components/home/WhyUs";
+import UpcomingFeatures from "@/components/home/UpcomingFeatures";
 
 export default function EduBotLandingPage() {
   const { theme, systemTheme } = useTheme();
@@ -39,8 +41,10 @@ export default function EduBotLandingPage() {
     >
       <NavBar />
       <Hero />
-      <main className="relative z-10">
+      <main className="relative z-10 space-y-20">
         <Features />
+        <WhyUs />
+        <UpcomingFeatures />
         <FAQ />
         {/* <CTA /> */}
       </main>

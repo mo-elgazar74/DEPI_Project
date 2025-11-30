@@ -11,13 +11,11 @@ export const ClerkWrapper = ({ children }) => {
   return (
     <ClerkProvider
       publishableKey={clerkKey}
-      routing="path"
-      appearance={{
-        layout: {
-          socialButtonsPlacement: 'bottom',
-          socialButtonsVariant: 'iconButton',
-        },
-      }}
+      signInUrl="/signin"
+      signUpUrl="/signup"
+      afterSignInUrl="/dashboard"
+      afterSignUpUrl="/onboarding"
+      afterSignOutUrl="/"
     >
       {children}
     </ClerkProvider>

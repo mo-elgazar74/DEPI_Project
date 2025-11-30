@@ -377,6 +377,36 @@ router.post("/tts", async (req, res) => {
   }
 });
 
+router.post("/stt", async (req, res) => {
+  try {
+    // Forward the raw multipart/form-data request to Flask
+    const response = await fetch(`${FLASK_API_BASE}/api/stt`, {
+      method: "POST",
+      headers: {
+        'Content-Type': req.headers['content-type'],
+      },
+      body: req,
+      duplex: 'half'
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    
+    if (!response.ok || payload.status === "error") {
+      throw Object.assign(new Error(payload.message || response.statusText), {
+        status: response.status,
+        payload,
+      });
+    }
+
+    res.json(payload);
+  } catch (error) {
+    console.error("Failed to process STT", error);
+    res
+      .status(error.status || 500)
+      .json({ status: "error", message: error.message, payload: error.payload });
+  }
+});
+
 router.post("/live/session", async (req, res) => {
   try {
     const context = await resolveStudentMeta(req, res);

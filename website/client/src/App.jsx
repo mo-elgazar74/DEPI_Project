@@ -12,7 +12,8 @@ import ProfilePage from "./pages/Profile";
 import EduBotPage from "./pages/EduBot";
 import { useUser } from "@clerk/clerk-react";
 import EduBotLandingPage from "./pages/EduBotLanding";
-import { Toaster } from "@/components/edubot/ui/toaster";
+import { Toaster as ShadcnToaster } from "@/components/edubot/ui/toaster";
+import { Toaster } from "sonner";
 import ThemeProvider from "./components/ThemeProvider";
 
 function LandingRoute() {
@@ -41,7 +42,8 @@ function AppShell() {
 
   return (
     <>
-      <Toaster />
+      <Toaster position="top-center" richColors />
+      <ShadcnToaster />
       <Routes>
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/signup" element={<SignUpPage />} />
@@ -65,7 +67,14 @@ function AppShell() {
         />
         <Route path="/sso-callback" element={<SsoCallback />} />
         <Route path="/home" element={<EduBotLandingPage />} />
-        <Route path="/edubot" element={<EduBotPage />} />
+        <Route
+          path="/edubot"
+          element={
+            <RequireProfile>
+              <EduBotPage />
+            </RequireProfile>
+          }
+        />
         <Route path="/" element={<LandingRoute />} />
       </Routes>
     </>

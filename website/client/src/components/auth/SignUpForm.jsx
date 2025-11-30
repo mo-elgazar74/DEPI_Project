@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSignUp } from "@clerk/clerk-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/edubot/ui/input";
 import { Label } from "@/components/edubot/ui/label";
 import { Button } from "@/components/edubot/ui/button";
 import logo from "@/public/logo.svg";
+import plainlogo from "@/public/logo2.png";
 
 const oauthProviders = [
   {
@@ -56,6 +58,8 @@ export function SignUpForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
   const redirectConfig = useMemo(() => {
@@ -146,7 +150,7 @@ export function SignUpForm() {
       <div className="flex flex-col items-center gap-6 text-center">
         <div className="relative">
           <img 
-            src={logo} 
+            src={plainlogo} 
             alt="EduBot Egypt Logo" 
             className="w-56 h-56 object-contain relative z-10 "
           />
@@ -223,34 +227,54 @@ export function SignUpForm() {
               <Label htmlFor="password" className="text-sm font-medium text-slate-600">
                 Password
               </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Create a password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                autoComplete="new-password"
-                minLength={8}
-                className="h-12 rounded-xl border border-[#dce5ff] bg-[#eef4ff] text-slate-700 shadow-sm shadow-sky-200/20 transition focus:border-[#2563eb] focus:bg-white focus:shadow-lg focus:shadow-sky-200/50 focus-visible:ring-2 focus-visible:ring-[#2563eb]/40"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="h-12 rounded-xl border border-[#dce5ff] bg-[#eef4ff] pr-12 text-slate-700 shadow-sm shadow-sky-200/20 transition focus:border-[#2563eb] focus:bg-white focus:shadow-lg focus:shadow-sky-200/50 focus-visible:ring-2 focus-visible:ring-[#2563eb]/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2 text-left pb-4">
               <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-600">
                 Confirm password
               </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repeat your password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                required
-                autoComplete="new-password"
-                minLength={8}
-                className="h-12 rounded-xl border border-[#dce5ff] bg-[#eef4ff] text-slate-700 shadow-sm shadow-sky-200/20 transition focus:border-[#2563eb] focus:bg-white focus:shadow-lg focus:shadow-sky-200/50 focus-visible:ring-2 focus-visible:ring-[#2563eb]/40"
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Repeat your password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  required
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="h-12 rounded-xl border border-[#dce5ff] bg-[#eef4ff] pr-12 text-slate-700 shadow-sm shadow-sky-200/20 transition focus:border-[#2563eb] focus:bg-white focus:shadow-lg focus:shadow-sky-200/50 focus-visible:ring-2 focus-visible:ring-[#2563eb]/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
 
             <Button
