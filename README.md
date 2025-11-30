@@ -1,572 +1,204 @@
-# 📚 Edu_Bot – Arabic Educational Chatbot (RAG with LlamaIndex)
+# Edu_Bot – Arabic Curriculum Agentic RAG
 
-An Arabic-first RAG pipeline for Egyptian primary-school content.  
-It extracts text from PDFs, cleans & chunks it, builds a FAISS vector index, and answers questions in a kid-friendly **Ali5** style (explain like to a 5-year-old) using **Groq** LLMs.
-
----
-
-## ✅ Current Status
-
-- End-to-end pipeline completed for **Maths → Grade 5 → Term 1**:
-  - PDF → JSONL (raw)
-  - Cleaned/Chunked JSONL → **FAISS** index
-  - CLI **Q&A** (`app/ask.py`) with **Ali5** system prompt (Arabic), optional reranker
-- Repository structure is ready to scale to more **subjects/grades/terms**
+Edu_Bot turns Ministry of Education PDFs into an Arabic-first tutoring assistant. It combines a classic RAG path and a deeper “agentic” mode that can chain retrieval, web search, vision, and memory to answer students in an Ali5 style. The repo also ships an optional full-stack web experience (Express + Clerk + Vite) and voice features (Groq TTS/STT).
 
 ---
 
-## 🗂️ Project Structure
+## What’s Inside
+- **Python AI service (`app/`)** – Extraction/cleaning, vector DB build, RAG + agentic LangGraph pipelines, Flask API, Groq TTS/STT.
+- **Vector store + data** – Extracted JSON chunks under `Data/`, Qdrant collections per subject/grade/term, optional FAISS legacy indexes.
+- **Full-stack shell (`website/`)** – Express proxy with Clerk auth/guest limits + Vite/React client with chat, dashboards, and voice hooks.
+- **Docker Compose** – One command to bring up the client, Express proxy, and AI Flask service.
+- **Runtime storage** – `chats/` (saved conversations), `memory_store/` (student memory summaries), `logs/` (API calls).
 
+---
+
+## Repository Map
 ```
-DEPI_Project/
-├── app/
-│   ├── ask.py                 # CLI Q&A (RAG + Ali5 prompt)
-│   ├── build_index.py         # Build FAISS index from cleaned JSONL
-│   ├── cleaning.py            # Clean & chunk extracted text
-│   └── extract_edu_pdf.py     # PDF → JSONL (raw)
-├── Data
-│   ├── Books
-│   │   ├── arabic
-│   │   │   ├── g1
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g2
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g3
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g4
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g5
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   └── g6
-│   │   │       ├── t1
-│   │   │       └── t2
-│   │   ├── english
-│   │   │   ├── g1
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g2
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g3
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g4
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g5
-│   │   │   │   ├── t1
-│   │   │   │   │   └── English_Prim5_Tr1.pdf
-│   │   │   │   └── t2
-│   │   │   └── g6
-│   │   │       ├── t1
-│   │   │       └── t2
-│   │   ├── maths
-│   │   │   ├── g1
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g2
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g3
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g4
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g5
-│   │   │   │   ├── t1
-│   │   │   │   │   └── Maths_grade_5_first_term.pdf
-│   │   │   │   └── t2
-│   │   │   └── g6
-│   │   │       ├── t1
-│   │   │       └── t2
-│   │   ├── science
-│   │   │   ├── g1
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g2
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g3
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g4
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   ├── g5
-│   │   │   │   ├── t1
-│   │   │   │   └── t2
-│   │   │   └── g6
-│   │   │       ├── t1
-│   │   │       └── t2
-│   │   └── social_studies
-│   │       ├── g1
-│   │       │   ├── t1
-│   │       │   └── t2
-│   │       ├── g2
-│   │       │   ├── t1
-│   │       │   └── t2
-│   │       ├── g3
-│   │       │   ├── t1
-│   │       │   └── t2
-│   │       ├── g4
-│   │       │   ├── t1
-│   │       │   └── t2
-│   │       ├── g5
-│   │       │   ├── t1
-│   │       │   └── t2
-│   │       └── g6
-│   │           ├── t1
-│   │           └── t2
-│   └── Extracted_Books
-│       ├── Basic
-│       │   ├── arabic
-│       │   │   ├── g1
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g2
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g3
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g4
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g5
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   └── g6
-│       │   │       ├── t1
-│       │   │       └── t2
-│       │   ├── english
-│       │   │   ├── g1
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g2
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g3
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g4
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g5
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   └── g6
-│       │   │       ├── t1
-│       │   │       └── t2
-│       │   ├── maths
-│       │   │   ├── g1
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g2
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g3
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g4
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g5
-│       │   │   │   ├── t1
-│       │   │   │   │   └── Maths_grade_5_first_term.jsonl
-│       │   │   │   └── t2
-│       │   │   └── g6
-│       │   │       ├── t1
-│       │   │       └── t2
-│       │   ├── science
-│       │   │   ├── g1
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g2
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g3
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g4
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   ├── g5
-│       │   │   │   ├── t1
-│       │   │   │   └── t2
-│       │   │   └── g6
-│       │   │       ├── t1
-│       │   │       └── t2
-│       │   └── social_studies
-│       │       ├── g1
-│       │       │   ├── t1
-│       │       │   └── t2
-│       │       ├── g2
-│       │       │   ├── t1
-│       │       │   └── t2
-│       │       ├── g3
-│       │       │   ├── t1
-│       │       │   └── t2
-│       │       ├── g4
-│       │       │   ├── t1
-│       │       │   └── t2
-│       │       ├── g5
-│       │       │   ├── t1
-│       │       │   └── t2
-│       │       └── g6
-│       │           ├── t1
-│       │           └── t2
-│       └── Cleaned
-│           ├── arabic
-│           │   ├── g1
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g2
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g3
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g4
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g5
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   └── g6
-│           │       ├── t1
-│           │       └── t2
-│           ├── english
-│           │   ├── g1
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g2
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g3
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g4
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g5
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   └── g6
-│           │       ├── t1
-│           │       └── t2
-│           ├── maths
-│           │   ├── g1
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g2
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g3
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g4
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g5
-│           │   │   ├── t1
-│           │   │   │   └── Maths_grade_5_first_term_clean_chunked.jsonl
-│           │   │   └── t2
-│           │   └── g6
-│           │       ├── t1
-│           │       └── t2
-│           ├── science
-│           │   ├── g1
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g2
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g3
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g4
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   ├── g5
-│           │   │   ├── t1
-│           │   │   └── t2
-│           │   └── g6
-│           │       ├── t1
-│           │       └── t2
-│           └── social_studies
-│               ├── g1
-│               │   ├── t1
-│               │   └── t2
-│               ├── g2
-│               │   ├── t1
-│               │   └── t2
-│               ├── g3
-│               │   ├── t1
-│               │   └── t2
-│               ├── g4
-│               │   ├── t1
-│               │   └── t2
-│               ├── g5
-│               │   ├── t1
-│               │   └── t2
-│               └── g6
-│                   ├── t1
-│                   └── t2
-├── Indexes
-│   ├── arabic
-│   │   ├── g1
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g2
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g3
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g4
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g5
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   └── g6
-│   │       ├── t1
-│   │       └── t2
-│   ├── english
-│   │   ├── g1
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g2
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g3
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g4
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g5
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   └── g6
-│   │       ├── t1
-│   │       └── t2
-│   ├── maths
-│   │   ├── g1
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g2
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g3
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g4
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g5
-│   │   │   ├── t1
-│   │   │   │   └── index_math_g5_t1
-│   │   │   │       ├── default__vector_store.json
-│   │   │   │       ├── docstore.json
-│   │   │   │       ├── graph_store.json
-│   │   │   │       ├── image__vector_store.json
-│   │   │   │       └── index_store.json
-│   │   │   └── t2
-│   │   └── g6
-│   │       ├── t1
-│   │       └── t2
-│   ├── science
-│   │   ├── g1
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g2
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g3
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g4
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   ├── g5
-│   │   │   ├── t1
-│   │   │   └── t2
-│   │   └── g6
-│   │       ├── t1
-│   │       └── t2
-│   └── social_studies
-│       ├── g1
-│       │   ├── t1
-│       │   └── t2
-│       ├── g2
-│       │   ├── t1
-│       │   └── t2
-│       ├── g3
-│       │   ├── t1
-│       │   └── t2
-│       ├── g4
-│       │   ├── t1
-│       │   └── t2
-│       ├── g5
-│       │   ├── t1
-│       │   └── t2
-│       └── g6
-│           ├── t1
-│           └── t2
-├── LICENSE
-├── README.md
-└── requirements.txt
-
+app/                 # AI stack: RAG/Agentic pipelines, Flask API, build scripts, Dockerfile
+Data/                # Raw PDFs + extracted JSON chunks
+memory_store/, chats/ # Persistent student memory + chat history
+website/
+  server/            # Express + Clerk proxy to Flask (auth, rate limits, voice proxy)
+  client/            # Vite + Clerk front-end
+docker-compose.yml   # Compose for client + server + AI service
 ```
 
-> **Naming convention (scalable):** `Indexes/<subject>/<grade>/<term>/index_<subject>_<grade>_<term>/`
+---
+
+## Prerequisites
+- Python 3.11+
+- Node 20+ and npm (for the web stack)
+- Docker/Docker Compose (optional, for the all-in-one run)
+- Qdrant instance reachable via `URL_QDRANT` and `API_KEY_QDRANT`
+- Hugging Face token for embeddings (`intfloat/multilingual-e5-large`)
+- Groq API key for text LLMs and playai TTS/STT (fallbacks to DeepSeek/OpenRouter when set)
+- Tesseract OCR binary installed and on `PATH` (for PDF extraction)
+- Optional: Tavily API key for web search in agentic mode, OpenRouter token for vision/Qwen, DeepSeek key for LLM fallback
 
 ---
 
-## 🧰 Requirements
+## Environment Variables
 
-- Python **3.10+** (Conda recommended)
-- A **Groq API key** (for LLM answers) — get it here: **https://console.groq.com/keys**
-- `pip install -r requirements.txt`
-
-> The code disables TensorFlow via environment variables to avoid TF/NumPy conflicts.
-
----
-
-## ⚙️ Setup
-
-### 1) Create and activate the environment
-```bash
-conda create -n edu_bot python=3.12 -y
-conda activate edu_bot
-pip install -r requirements.txt
+### Root `.env` (AI/RAG service)
 ```
-
-### 2) Create a `.env` in the project root
-```ini
-# Groq
-GROQ_API_KEY=YOUR_GROQ_KEY_HERE
+# Core LLMs
+GROQ_API_KEY=...
 GROQ_API_BASE=https://api.groq.com/openai/v1
-# Faster for short answers: llama-3.1-8b-instant | More capable: llama-3.3-70b-versatile
 GROQ_MODEL=llama-3.3-70b-versatile
+DEEPSEEK_API_KEY=...
+DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+DEEPSEEK_CHAT_MODEL=deepseek-chat
 
-# Index path (adjust to your machine)
-INDEX_DIR=/home/mohamed/DEPI_Project/Indexes/maths/g5/t1/index_math_g5_t1
+# Embeddings + Vector DB
+HUGGINGFACEHUB_API_TOKEN=...
+URL_QDRANT=https://your-qdrant
+API_KEY_QDRANT=...
 
-# Retrieval
-TOP_K=8          # number of chunks retrieved from FAISS before postprocessing
-USE_RERANK=1     # 1 = enable cross-encoder reranker (slower), 0 = disable (faster)
+# Vision / OpenRouter (optional)
+OPENROUTER_API_KEY=...
+OPENROUTER_BASE=https://openrouter.ai/api/v1
+OPENROUTER_VISION_MODEL=meta-llama/llama-3.2-90b-vision-instruct
+OPENROUTER_BACKUP_VISION_MODEL=qwen/qwen-vl-plus
+OPENROUTER_REFERER=...
+OPENROUTER_TITLE=EduBot
+
+# Web search (agentic mode)
+TAVILY_API_KEY=...
+
+# Voice (Groq playai TTS/STT)
+GROQ_TTS_STT_API_KEY=...   # falls back to GROQ_API_KEY if absent
+```
+
+### `website/server/.env` (Express + Clerk proxy)
+```
+PORT=4000
+CLIENT_ORIGIN=http://localhost:5173
+CLERK_SECRET_KEY=sk_test_or_live
+FLASK_API_BASE=http://localhost:8000
+EDUBOT_GUEST_LIMIT=5
+```
+
+### `website/client/.env.local` (Vite + Clerk)
+```
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_or_live
+VITE_API_BASE=http://localhost:4000
+# Optional voice + live-calls
+VITE_ELEVENLABS_API_KEY=...
+VITE_ELEVENLABS_VOICE_ID=...
+VITE_VAPI_PUBLIC_KEY=...
+VITE_VAPI_ASSISTANT_ID=...
 ```
 
 ---
 
-## 📤 Data Flow (Pipeline)
+## Setup & Run
 
-1) **Extract PDF → JSONL (Basic)**  
-   Script: `app/extract_edu_pdf.py`  
-   Output: `Data/Extracted_Books/Basic/*.jsonl`
-
-2) **Clean & Chunk JSONL**  
-   Script: `app/cleaning.py`  
-   Output: `Data/Extracted_Books/Cleaned/*_clean_chunked.jsonl`
-
-3) **Build FAISS Index**  
-   Script: `app/build_index.py`  
-   Uses HuggingFace embeddings + FAISS (cosine/IP)  
-   Output: `Indexes/.../index_*/*`
-
-4) **Q&A (RAG + Ali5)**  
-   Script: `app/ask.py`  
-   Arabic Ali5 prompt + optional reranker + Groq LLM
-
----
-
-## 🏗️ Build the Index
-
+### 1) AI service only (Python)
 ```bash
-conda run --live-stream -n edu_bot python app/build_index.py
+cd app
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+# create ../.env with the variables above
+
+# (Optional) ingest data
+python extract_books.py    # parses PDFs → Data/Extracted_Books/...
+python build_db.py         # embeds and upserts to Qdrant
+
+# Run the Flask API
+python app_flask.py        # http://localhost:8000
 ```
-
-> 🔔 **Important:** If you **change the embedding model**, you **must rebuild the index** so FAISS dimensions match.
-
----
-
-## ❓ Ask Questions (CLI)
-
+Quick CLI test without the web stack:
 ```bash
-conda run --live-stream -n edu_bot python app/ask.py
+python - <<'PY'
+from main import run_agentic_pipeline
+print(run_agentic_pipeline("اشرح لي كيفية ضرب الكسور للصف الخامس", {"grade":"5","term":"1","name":"Omar"}))
+PY
 ```
 
-- Type your question in **Arabic** (press `q` to quit).
-- The **Ali5** system prompt ensures child-friendly explanations (short sentences, simple words, steps & small examples).
-- The CLI also prints **source chunks** (page/subject/grade/score).
+### 2) Full stack (Flask + Express + Vite)
+```bash
+# Terminal 1: AI service
+cd app && source .venv/bin/activate && python app_flask.py
 
-**Current defaults in code:**
-- `build_index.py`: uses multilingual E5 embeddings (base) to build the vector store.
-- `app/ask.py`: uses multilingual E5 (small) for querying + optional cross-encoder reranker.
+# Terminal 2: Express proxy (Clerk auth + guest limits)
+cd website/server
+npm install
+npm run dev     # http://localhost:4000
 
-> To avoid dimension issues, keep the **same embedding family** across build and ask, or rebuild the index after changes.
+# Terminal 3: React client
+cd website/client
+npm install
+npm run dev     # http://localhost:5173
+```
 
----
-
-## 🧪 Team Playbook (step-by-step)
-
-1) `conda activate edu_bot`  
-2) Confirm `.env` has a valid `GROQ_API_KEY` and the correct `INDEX_DIR`.  
-3) If you plan to change the embedding model, **rebuild the index** afterwards.  
-4) Build the index:
-   ```bash
-   conda run --live-stream -n edu_bot python app/build_index.py
-   ```
-5) Run Q&A:
-   ```bash
-   conda run --live-stream -n edu_bot python app/ask.py
-   ```
-6) If slow:
-   - Set `USE_RERANK=0` in `.env` (skips cross-encoder)
-   - Try `GROQ_MODEL=llama-3.1-8b-instant`
-   - Lower `TOP_K` (e.g., 6)
+### 3) Docker Compose
+Ensure `.env`, `website/server/.env`, and `website/client/.env` exist, then:
+```bash
+docker compose up --build
+```
+This starts:
+- `ai-service` → Flask on `:8000`
+- `backend` → Express proxy on `:4000`
+- `frontend` → Nginx-served Vite build on `:5173`
 
 ---
 
-## 🔧 Tips & Tuning
-
-- **Faster responses:** `USE_RERANK=0` and `TOP_K=6`.  
-- **Longer answers:** Increase `TOP_K` to 6–10; consider switching `response_mode` to `"simple_summarize"` in `ask.py`.  
-- **Arabic reranker:** Prefer **`BAAI/bge-reranker-v2-m3`** (multilingual) over MiniLM if you need a reranker; install extras below.  
-- **Scaling:** Follow the folder convention for new subjects/grades/terms; later we can move to a cloud vector DB (Pinecone/Qdrant/Azure) and route by `{subject, grade, term}` metadata.
-
----
-
-## 🛠️ Troubleshooting
-
-- **FAISS error `assert d == self.d`**  
-  Embedding dimension mismatch.  
-  → Rebuild the index after changing the embedding model.
-
-- **Slow responses**  
-  Cross-encoder reranker is heavy on CPU.  
-  → Set `USE_RERANK=0`, reduce `TOP_K`, or use `llama-3.1-8b-instant`.
-
-- **ImportError: `einops` / TF / NumPy**  
-  Install missing deps:
-  ```bash
-  pip install -U einops sentence-transformers transformers safetensors
-  ```
-  (The scripts also disable TensorFlow via env vars at the top.)
-
-- **Ali5 style not followed**  
-  Ensure Groq is active (LLM not disabled) and consider a summarize response mode for clearer/longer outputs.
+## RAG & Agentic Pipelines
+- **Standard RAG (`rag.py`)**: grade/term-aware retrieval from Qdrant, optional image description (vision via OpenRouter), student memory injection, and Groq/DeepSeek text generation.
+- **Agentic RAG (`agentic_rag.py`)**: LangGraph plan with memory loading, optional vision description, subject/collection selection, iterative retrieval with metadata filters, optional Tavily web search, answer drafting + confidence loop, and memory updates.
+- **Entry point**: `run_agentic_pipeline(question, student_meta, mode_flag=0|1, web_search_flag=0|1, image_base64=None)` in `app/main.py`. `mode_flag=1` or `web_search_flag=1` forces the agentic path.
+- **Embeddings**: `intfloat/multilingual-e5-large` via Hugging Face endpoint.
+- **Vector store**: Qdrant collections named by subject/grade/term (e.g., `math_g5_t1`). Extracted chunks live in `Data/Extracted_Books/<subject>/<grade>/<term>/*.json`.
+- **Vision**: When `image_base64` is provided, the agent first asks the vision model for a concise description and blends it into the search query.
+- **Memory**: Per-student summaries saved under `memory_store/<name>.json`, updated after each answer.
 
 ---
 
-## 📝 License
+## Flask API (AI service)
+- `POST /api/ask` – Single-turn Q&A. Body: `question`, optional `image_base64`, `student_meta`, `mode_flag` (0=RAG, 1=Agentic), `web_search_flag` (1 forces agentic).
+- `POST /api/chat/new` → create chat; `GET /api/chats` → list; `GET/DELETE /api/chat/:id`; `POST /api/chat/:id/ask` → multi-turn with history and memory updates.
+- `POST /api/voice_question` – Text from STT, runs the agent, returns answer.
+- `POST /api/tts?stream=1` – Groq playai Arabic TTS (streamed or single file). Body: `text`, optional `voice`.
+- `POST /api/stt` – Groq Whisper STT (multipart `audio` file).
+- `POST /api/live` – Helper for Vapi live-call sessions (forwarded by Express).
+Headers: `X-User-Id` is honored to separate chat/memory storage per user; defaults to `local`.
 
-See `LICENSE` in the project root.
+---
+
+## Express Proxy (`website/server`)
+- Wraps the Flask API with Clerk authentication, guest limits (`EDUBOT_GUEST_LIMIT`), and cookie-based guest IDs.
+- Routes mirror the Flask endpoints under `/api/rag/*` (e.g., `/api/rag/ask`, `/api/rag/chat/:id/ask`, `/api/rag/tts`, `/api/rag/stt`).
+- Normalizes student metadata from Clerk profiles and ensures grade/term defaults for guests.
+
+---
+
+## React Client (`website/client`)
+- Vite + Clerk-authenticated UI with chat, dashboards, OTP/email login, and mic controls.
+- Uses the Express proxy for all calls; configure `VITE_API_BASE` and Clerk keys.
+- Voice: integrates ElevenLabs (TTS playback) and optional Vapi live-call card when keys are present.
+- Build: `npm run build` → static assets served by Nginx in the Docker image.
+
+---
+
+## Data Pipeline Notes
+1) **Extract PDFs**: place PDFs under `Data/` and run `python app/extract_books.py`. Outputs chunked JSON with metadata (`subject`, `grade`, `term`, `page`, `chunk_id`, math/diagram hints).
+2) **Build Qdrant**: run `python app/build_db.py` to embed chunks and upsert to collections. Re-run after adding content or changing the embedding model.
+3) **Validation**: use `python -m app.deploy` or the Flask `/api/ask` endpoint to sanity-check retrieval.
+
+---
+
+## Storage & Logs
+- Chats: `chats/<user_id>/<chat_id>.json`
+- Memory: `memory_store/<name>.json`
+- Logs: `logs/api_requests.log`
+- Temp audio (TTS/STT): cleaned up after each request
+
+---
+
+## Troubleshooting
+- Qdrant dimension errors → rebuild with `build_db.py` after changing embeddings.
+- Blank answers with images → confirm `OPENROUTER_API_KEY` and `OPENROUTER_VISION_MODEL` are set.
+- OCR misses math-heavy PDFs → ensure `tesseract` is installed and accessible; rerun `extract_books.py`.
+- Clerk errors → verify `CLERK_SECRET_KEY`/`VITE_CLERK_PUBLISHABLE_KEY` and allowed origins.
+- Guest usage capped → bump `EDUBOT_GUEST_LIMIT` or sign in via Clerk.
