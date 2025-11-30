@@ -8,11 +8,50 @@ export const LanguageProvider = ({ children }) => {
     return localStorage.getItem("language") || "en";
   });
 
-  const isDashboardPage = typeof window !== "undefined" && window.location.pathname.startsWith("/dashboard");
+  const [pathname, setPathname] = useState(() =>
+    typeof window !== "undefined" ? window.location.pathname : ""
+  );
 
   useEffect(() => {
-    if (isDashboardPage) {
-      // Freeze language side-effects on dashboard to avoid UI shifts there.
+    if (typeof window === "undefined") return;
+
+    const updatePathname = () => setPathname(window.location.pathname);
+
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+
+    window.history.pushState = function (...args) {
+      const result = originalPushState.apply(this, args);
+      window.dispatchEvent(new Event("pushstate"));
+      window.dispatchEvent(new Event("locationchange"));
+      return result;
+    };
+
+    window.history.replaceState = function (...args) {
+      const result = originalReplaceState.apply(this, args);
+      window.dispatchEvent(new Event("replacestate"));
+      window.dispatchEvent(new Event("locationchange"));
+      return result;
+    };
+
+    window.addEventListener("popstate", updatePathname);
+    window.addEventListener("locationchange", updatePathname);
+    updatePathname();
+
+    return () => {
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+      window.removeEventListener("popstate", updatePathname);
+      window.removeEventListener("locationchange", updatePathname);
+    };
+  }, []);
+
+  const isLayoutLockedPage =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/edubot");
+
+  useEffect(() => {
+    if (isLayoutLockedPage) {
+      // Keep EduBot/dashboard layout stable regardless of language toggle.
       document.documentElement.dir = "ltr";
       document.documentElement.lang = "en";
       return;
@@ -20,7 +59,7 @@ export const LanguageProvider = ({ children }) => {
     localStorage.setItem("language", language);
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     document.documentElement.lang = language;
-  }, [language, isDashboardPage]);
+  }, [language, isLayoutLockedPage]);
 
   const t = (key) => {
     const keys = key.split(".");
@@ -32,7 +71,7 @@ export const LanguageProvider = ({ children }) => {
   };
 
   const toggleLanguage = () => {
-    if (isDashboardPage) return; // Disable toggle effect on dashboard
+    if (isLayoutLockedPage) return; // Disable toggle effect on EduBot/dashboard
     setLanguage((prev) => (prev === "en" ? "ar" : "en"));
   };
 
