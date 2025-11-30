@@ -116,7 +116,7 @@ if llm is None:
                 model_name="openai/gpt-oss-120b",
                 temperature=0.1,
             )
-            print(f"✅ Agent LLM (Groq): جاهز (موديل: {"openai/gpt-oss-120b"}).")
+            print(f"✅ Agent LLM (Groq): جاهز (موديل: openai/gpt-oss-120b).")
         else:
             print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env.")
     except Exception as e:
