@@ -43,7 +43,7 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
 DEEPSEEK_CHAT_MODEL = os.getenv("DEEPSEEK_CHAT_MODEL", "deepseek-chat")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_MODEL = os.getenv("GROQ_MODEL")
 
 QDRANT_URL = os.getenv("URL_QDRANT")
 QDRANT_API_KEY = os.getenv("API_KEY_QDRANT")
@@ -104,10 +104,10 @@ if llm is None:
         if GROQ_API_KEY:
             llm = ChatGroq(
                 groq_api_key=GROQ_API_KEY,
-                model_name=GROQ_MODEL,
+                model_name="openai/gpt-oss-120b",
                 temperature=0.1,
             )
-            print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL}).")
+            print(f"✅ Agent LLM (Groq): جاهز (موديل: {"openai/gpt-oss-120b"}).")
         else:
             print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env.")
     except Exception as e:
@@ -683,5 +683,6 @@ if __name__ == "__main__":
     # question_general = "ما هي عاصمة البرازيل؟"
 
     # run_standard_rag(question_general, student_meta)
+
 
 
