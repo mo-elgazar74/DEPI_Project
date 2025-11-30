@@ -78,41 +78,63 @@ except Exception as e:
     print(f"⚠️ HuggingFace Embeddings: فشل. تأكد من HF_API_KEY. خطأ: {e}")
     embeddings = None
 
+
 llm = None
 
-# try:
-#     if DEEPSEEK_API_KEY:
-#         llm = ChatOpenAI(
-#             openai_api_key=DEEPSEEK_API_KEY,
-#             openai_api_base=DEEPSEEK_BASE_URL,
-#             model=DEEPSEEK_CHAT_MODEL,
-#             temperature=0.1,
-#         )
-#         print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL}).")
-#     else:
-#         print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة Groq.")
-# except Exception as e:
-#     print(f"⚠️ فشل تهيئة DeepSeek: {e}")
-#     llm = None
+# 1️⃣ المحاولة الأولى: Groq - Llama 3.3 70B Versatile
+try:
+    if GROQ_API_KEY:
+        llm = ChatGroq(
+            groq_api_key=GROQ_API_KEY,
+            model_name=GROQ_MODEL or "llama-3.3-70b-versatile",
+            temperature=0.1,
+        )
+        print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL or 'llama-3.3-70b-versatile'}).")
+    else:
+        print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env، سيتم تجربة DeepSeek.")
+except Exception as e:
+    print(f"⚠️ فشل تهيئة Groq: {e}")
+    llm = None
+
+# 2️⃣ المحاولة الثانية: DeepSeek - deepseek-chat
+if llm is None:
+    try:
+        if DEEPSEEK_API_KEY:
+            llm = ChatOpenAI(
+                openai_api_key=DEEPSEEK_API_KEY,
+                openai_api_base=DEEPSEEK_BASE_URL,
+                model=DEEPSEEK_CHAT_MODEL or "deepseek-chat",
+                temperature=0.1,
+            )
+            print(f"✅ Agent LLM (DeepSeek): جاهز (موديل: {DEEPSEEK_CHAT_MODEL or 'deepseek-chat'}).")
+        else:
+            print("ℹ️ لا يوجد DEEPSEEK_API_KEY في الـ .env، سيتم تجربة OpenRouter + Qwen.")
+    except Exception as e:
+        print(f"⚠️ فشل تهيئة DeepSeek: {e}")
+        llm = None
+
+# 3️⃣ المحاولة الثالثة: OpenRouter - Qwen 2.5 72B Instruct
+OPENROUTER_CHAT_MODEL = os.getenv("OPENROUTER_CHAT_MODEL", "qwen/qwen-2.5-72b-instruct")
 
 if llm is None:
     try:
-        if GROQ_API_KEY:
-            llm = ChatGroq(
-                groq_api_key=GROQ_API_KEY,
-                model_name=GROQ_MODEL,
+        if OPENROUTER_API_KEY:
+            llm = ChatOpenAI(
+                openai_api_key=OPENROUTER_API_KEY,
+                openai_api_base=OPENROUTER_BASE,
+                model=OPENROUTER_CHAT_MODEL,
                 temperature=0.1,
             )
-            print(f"✅ Agent LLM (Groq): جاهز (موديل: {GROQ_MODEL}).")
+            print(f"✅ Agent LLM (OpenRouter/Qwen): جاهز (موديل: {OPENROUTER_CHAT_MODEL}).")
         else:
-            print("ℹ️ لا يوجد GROQ_API_KEY في الـ .env.")
+            print("ℹ️ لا يوجد OPENROUTER_API_KEY في الـ .env.")
     except Exception as e:
-        print(f"⚠️ فشل تهيئة Groq: {e}")
+        print(f"⚠️ فشل تهيئة OpenRouter/Qwen: {e}")
         llm = None
 
 # 🔹 تأكيد أخير
 if llm is None:
-    raise RuntimeError("❌ لا يوجد أي LLM متاح (لا DeepSeek ولا Groq).")
+    raise RuntimeError("❌ لا يوجد أي LLM متاح (لا Groq ولا DeepSeek ولا OpenRouter/Qwen).")
 
 
 # --- Vision Client (OpenRouter) 
@@ -642,4 +664,5 @@ if __name__ == "__main__":
     # print("### تجربة 3: سؤال عام (General)")
     # print("#" * 50)
     # question_general = "ما هي عاصمة البرازيل؟"
+
     # run_standard_rag(question_general, student_meta)
