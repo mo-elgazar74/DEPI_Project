@@ -48,8 +48,8 @@ export default function UpcomingFeatures() {
                   transition: `opacity 520ms cubic-bezier(.22,.9,.31,1) ${delay}, transform 520ms cubic-bezier(.22,.9,.31,1) ${delay}`,
                 }}
               >
-                <Card className="h-full overflow-hidden bg-white/40 border-none transition-colors duration-300">
-                  <CardContent className="p-6 sm:p-8 flex flex-col items-center text-center space-y-4 sm:space-y-6">
+                <Card className="h-full overflow-hidden border border-white/25 bg-white/40 dark:bg-white/5 shadow-lg backdrop-blur-sm transition-colors duration-300">
+                  <CardContent className="p-6 sm:p-8 flex flex-col items-center text-center space-y-4 sm:space-y-6 text-foreground">
                     <div className="relative">
                       <div className="absolute -inset-4 bg-primary/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       <div className="relative p-3 sm:p-4 bg-primary/10 ">
