@@ -7,6 +7,7 @@ def run_agentic_pipeline(
     question: str,
     student_meta: dict | None = None,
     mode_flag: int = 0,
+    web_search_flag: int = 0,
     image_base64: str | None = None,
 ):
     """
@@ -18,10 +19,14 @@ def run_agentic_pipeline(
 
     student_meta = student_meta or {"grade": "6", "term": "1", "name": "Guest"}
 
+    # Force Agentic Mode if Web Search is requested
+    if web_search_flag == 1:
+        mode_flag = 1
+
     if mode_flag == 1:
         # تشغيل التفكير العميق
         print("🧠 تشغيل نظام التفكير العميق ...")
-        state = run_agentic_rag(question, student_meta, image_base64=image_base64)
+        state = run_agentic_rag(question, student_meta, image_base64=image_base64, web_search_flag=web_search_flag)
         answer_text = (
             state.get("final_answer")
             or state.get("answer")
